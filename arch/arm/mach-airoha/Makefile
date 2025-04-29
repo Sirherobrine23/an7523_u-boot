@@ -3,3 +3,4 @@
 obj-y	+= cpu.o
 
 obj-$(CONFIG_TARGET_AN7581) += an7581/
+obj-$(CONFIG_TARGET_AN7583) += an7583/
