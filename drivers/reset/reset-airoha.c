@@ -11,8 +11,10 @@
 #include <linux/io.h>
 #include <reset-uclass.h>
 #include <regmap.h>
+#include <syscon.h>
 
 #include <dt-bindings/reset/airoha,en7581-reset.h>
+#include <dt-bindings/reset/airoha,an7583-reset.h>
 
 #define RST_NR_PER_BANK			32
 
@@ -22,6 +24,7 @@
 struct airoha_reset_priv {
 	const u16 *bank_ofs;
 	const u16 *idx_map;
+	int num_rsts;
 	struct regmap *map;
 };
 
@@ -88,6 +91,59 @@ static const u16 en7581_rst_map[] = {
 	[EN7581_XPON_MAC_RST]		= RST_NR_PER_BANK + 31,
 };
 
+static const u16 an7583_rst_map[] = {
+	/* RST_CTRL2 */
+	[AN7583_XPON_PHY_RST]		= 0,
+	[AN7583_GPON_OLT_RST]		= 1,
+	[AN7583_CPU_TIMER2_RST]		= 2,
+	[AN7583_HSUART_RST]		= 3,
+	[AN7583_UART4_RST]		= 4,
+	[AN7583_UART5_RST]		= 5,
+	[AN7583_I2C2_RST]		= 6,
+	[AN7583_XSI_MAC_RST]		= 7,
+	[AN7583_XSI_PHY_RST]		= 8,
+	[AN7583_NPU_RST]		= 9,
+	[AN7583_TRNG_MSTART_RST]	= 12,
+	[AN7583_DUAL_HSI0_RST]		= 13,
+	[AN7583_DUAL_HSI1_RST]		= 14,
+	[AN7583_DUAL_HSI0_MAC_RST]	= 16,
+	[AN7583_DUAL_HSI1_MAC_RST]	= 17,
+	[AN7583_WDMA_RST]		= 19,
+	[AN7583_WOE0_RST]		= 20,
+	[AN7583_HSDMA_RST]		= 22,
+	[AN7583_TDMA_RST]		= 24,
+	[AN7583_EMMC_RST]		= 25,
+	[AN7583_SOE_RST]		= 26,
+	[AN7583_XFP_MAC_RST]		= 28,
+	[AN7583_MDIO0]			= 30,
+	[AN7583_MDIO1]			= 31,
+	/* RST_CTRL1 */
+	[AN7583_PCM1_ZSI_ISI_RST]	= RST_NR_PER_BANK + 0,
+	[AN7583_FE_PDMA_RST]		= RST_NR_PER_BANK + 1,
+	[AN7583_FE_QDMA_RST]		= RST_NR_PER_BANK + 2,
+	[AN7583_PCM_SPIWP_RST]		= RST_NR_PER_BANK + 4,
+	[AN7583_CRYPTO_RST]		= RST_NR_PER_BANK + 6,
+	[AN7583_TIMER_RST]		= RST_NR_PER_BANK + 8,
+	[AN7583_PCM1_RST]		= RST_NR_PER_BANK + 11,
+	[AN7583_UART_RST]		= RST_NR_PER_BANK + 12,
+	[AN7583_GPIO_RST]		= RST_NR_PER_BANK + 13,
+	[AN7583_GDMA_RST]		= RST_NR_PER_BANK + 14,
+	[AN7583_I2C_MASTER_RST]		= RST_NR_PER_BANK + 16,
+	[AN7583_PCM2_ZSI_ISI_RST]	= RST_NR_PER_BANK + 17,
+	[AN7583_SFC_RST]		= RST_NR_PER_BANK + 18,
+	[AN7583_UART2_RST]		= RST_NR_PER_BANK + 19,
+	[AN7583_GDMP_RST]		= RST_NR_PER_BANK + 20,
+	[AN7583_FE_RST]			= RST_NR_PER_BANK + 21,
+	[AN7583_USB_HOST_P0_RST]	= RST_NR_PER_BANK + 22,
+	[AN7583_GSW_RST]		= RST_NR_PER_BANK + 23,
+	[AN7583_SFC2_PCM_RST]		= RST_NR_PER_BANK + 25,
+	[AN7583_PCIE0_RST]		= RST_NR_PER_BANK + 26,
+	[AN7583_PCIE1_RST]		= RST_NR_PER_BANK + 27,
+	[AN7583_CPU_TIMER_RST]		= RST_NR_PER_BANK + 28,
+	[AN7583_PCIE_HB_RST]		= RST_NR_PER_BANK + 29,
+	[AN7583_XPON_MAC_RST]		= RST_NR_PER_BANK + 31,
+};
+
 static int airoha_reset_update(struct airoha_reset_priv *priv,
 			       unsigned long id, bool assert)
 {
@@ -135,7 +191,7 @@ static int airoha_reset_xlate(struct reset_ctl *reset_ctl,
 {
 	struct airoha_reset_priv *priv = dev_get_priv(reset_ctl->dev);
 
-	if (args->args[0] >= ARRAY_SIZE(en7581_rst_map))
+	if (args->args[0] >= priv->num_rsts)
 		return -EINVAL;
 
 	reset_ctl->id = priv->idx_map[args->args[0]];
@@ -150,7 +206,7 @@ static struct reset_ops airoha_reset_ops = {
 	.rst_status = airoha_reset_status,
 };
 
-static int airoha_reset_probe(struct udevice *dev)
+static int an7581_reset_probe(struct udevice *dev)
 {
 	struct airoha_reset_priv *priv = dev_get_priv(dev);
 	int ret;
@@ -161,8 +217,42 @@ static int airoha_reset_probe(struct udevice *dev)
 
 	priv->bank_ofs = en7581_rst_ofs;
 	priv->idx_map = en7581_rst_map;
+	priv->num_rsts = ARRAY_SIZE(en7581_rst_map);
 
 	return 0;
+}
+
+static int an7583_reset_probe(struct udevice *dev)
+{
+	struct airoha_reset_priv *priv = dev_get_priv(dev);
+	ofnode pnode, scu_node = dev_ofnode(dev);
+
+	pnode = ofnode_get_parent(scu_node);
+	if (!ofnode_valid(pnode))
+		return -EINVAL;
+
+	priv->map = syscon_node_to_regmap(pnode);
+	if (IS_ERR(priv->map))
+		return PTR_ERR(priv->map);
+
+	priv->bank_ofs = en7581_rst_ofs;
+	priv->idx_map = an7583_rst_map;
+	priv->num_rsts = ARRAY_SIZE(an7583_rst_map);
+
+	return 0;
+}
+
+static int airoha_reset_probe(struct udevice *dev)
+{
+	if (ofnode_device_is_compatible(dev_ofnode(dev),
+					"airoha,en7581-scu"))
+		return an7581_reset_probe(dev);
+
+	if (ofnode_device_is_compatible(dev_ofnode(dev),
+					"airoha,an7583-scu"))
+		return an7583_reset_probe(dev);
+
+	return -ENODEV;
 }
 
 U_BOOT_DRIVER(airoha_reset) = {
