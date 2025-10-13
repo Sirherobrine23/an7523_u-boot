@@ -9,3 +9,7 @@
 };
 
 #include "an7581-u-boot.dtsi"
+
+&snfi {
+	status = "okay";
+};
