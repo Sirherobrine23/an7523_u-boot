@@ -334,7 +334,7 @@ struct airoha_eth {
 struct airoha_eth_soc_data {
 	int num_xsi_rsts;
 	const char * const *xsi_rsts_names;
-	ofnode (*get_scu_node)(struct udevice *dev);
+	struct regmap *(*get_scu_node)(void);
 	const char *switch_compatible;
 };
 
@@ -349,6 +349,12 @@ static const char * const an7583_xsi_rsts_names[] = {
 	"hsi0-mac",
 	"hsi1-mac",
 	"xfp-mac",
+};
+
+static const char * const en7523_xsi_rsts_names[] = {
+	"hsi0-mac",
+	"hsi1-mac",
+	"hsi-mac",
 };
 
 static u32 airoha_rr(void __iomem *base, u32 offset)
@@ -819,14 +825,9 @@ static int airoha_eth_probe(struct udevice *dev)
 	struct airoha_eth_soc_data *data = (void *)dev_get_driver_data(dev);
 	struct airoha_eth *eth = dev_get_priv(dev);
 	struct regmap *scu_regmap;
-	ofnode scu_node;
 	int i, ret;
 
-	scu_node = data->get_scu_node(dev);
-	if (!ofnode_valid(scu_node))
-		return -EINVAL;
-
-	scu_regmap = syscon_node_to_regmap(scu_node);
+	scu_regmap = data->get_scu_node();
 	if (IS_ERR(scu_regmap))
 		return PTR_ERR(scu_regmap);
 
@@ -1063,20 +1064,40 @@ static int arht_eth_write_hwaddr(struct udevice *dev)
 	return 0;
 }
 
-static ofnode en7581_get_scu_node(struct udevice *dev)
+static struct regmap* en7581_get_scu_node(void)
 {
-	return ofnode_by_compatible(ofnode_null(), "airoha,en7581-scu");
+	ofnode node;
+	node = ofnode_by_compatible(ofnode_null(), "airoha,en7581-scu");
+	if (!ofnode_valid(node))
+		return ERR_PTR(-EINVAL);
+	return syscon_node_to_regmap(node);
 }
 
-static ofnode an7583_get_scu_node(struct udevice *dev)
+static struct regmap* an7583_get_scu_node(void)
 {
-	ofnode scu_node;
+	ofnode node;
+	node = ofnode_by_compatible(ofnode_null(), "airoha,an7583-scu");
+	if (!ofnode_valid(node))
+		return ERR_PTR(-EINVAL);
+	return syscon_node_to_regmap(node);
+}
 
-	scu_node = ofnode_by_compatible(ofnode_null(), "airoha,an7583-scu");
-	if (!ofnode_valid(scu_node))
-		return scu_node;
+static struct regmap* en7523_get_scu_node(void)
+{
+	struct regmap *map;
+	int err;
+	ofnode node;
 
-	return ofnode_get_parent(scu_node);
+	node = ofnode_by_compatible(ofnode_null(), "airoha,en7523-scu");
+	if (!ofnode_valid(node))
+		return ERR_PTR(-EINVAL);
+
+	/* CHIP_SCU (index=0), SCU (index=1) */
+	err = regmap_init_mem_index(node, &map, 1);
+	if (err)
+		return ERR_PTR(err);
+
+	return map;
 }
 
 static const struct airoha_eth_soc_data en7581_data = {
@@ -1093,12 +1114,22 @@ static const struct airoha_eth_soc_data an7583_data = {
 	.switch_compatible = "airoha,an7583-switch",
 };
 
+static const struct airoha_eth_soc_data en7523_data = {
+	.xsi_rsts_names = en7523_xsi_rsts_names,
+	.num_xsi_rsts = ARRAY_SIZE(en7523_xsi_rsts_names),
+	.get_scu_node = en7523_get_scu_node,
+	.switch_compatible = "airoha,en7523-switch",
+};
+
 static const struct udevice_id airoha_eth_ids[] = {
 	{ .compatible = "airoha,en7581-eth",
 	  .data = (ulong)&en7581_data,
 	},
 	{ .compatible = "airoha,an7583-eth",
 	  .data = (ulong)&an7583_data,
+	},
+	{ .compatible = "airoha,en7523-eth",
+		.data = (ulong)&en7523_data,
 	},
 	{ }
 };
