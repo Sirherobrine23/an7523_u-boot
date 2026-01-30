@@ -1067,6 +1067,7 @@ static int arht_eth_write_hwaddr(struct udevice *dev)
 
 static int airoha_eth_bind(struct udevice *dev)
 {
+	struct airoha_eth_soc_data *data = (void *)dev_get_driver_data(dev);
 	ofnode switch_node, mdio_node;
 	struct udevice *mdio_dev;
 	int ret = 0;
@@ -1075,7 +1076,7 @@ static int airoha_eth_bind(struct udevice *dev)
 		return 0;
 
 	switch_node = ofnode_by_compatible(ofnode_null(),
-					   "airoha,en7581-switch");
+					   data->switch_compatible);
 	if (!ofnode_valid(switch_node)) {
 		debug("Warning: missing switch node\n");
 		return 0;
