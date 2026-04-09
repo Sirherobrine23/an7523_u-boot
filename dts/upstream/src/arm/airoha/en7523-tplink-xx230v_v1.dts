@@ -1,0 +1,161 @@
+// SPDX-License-Identifier: (GPL-2.0-only OR BSD-2-Clause)
+/dts-v1/;
+
+/* Bootloader installs ATF here */
+/memreserve/ 0x80000000 0x200000;
+
+#include <dt-bindings/input/linux-event-codes.h>
+#include "en7523.dtsi"
+
+/ {
+	model = "TP-Link xx230v v1";
+	compatible = "airoha,en7523-xx230v-v1", "airoha,en7523";
+
+	aliases {
+		serial0 = &uart1;
+	};
+
+	chosen {
+		bootargs = "console=ttyS0,115200 earlycon";
+		stdout-path = "serial0:115200n8";
+		linux,usable-memory-range = <0x80200000 0x1fe00000>;
+	};
+
+	memory@80000000 {
+		device_type = "memory";
+		reg = <0x80000000 0x20000000>;
+	};
+
+	keys {
+		compatible = "gpio-keys-polled";
+		poll-interval = <100>;
+
+		reset {
+			label = "reset";
+			linux,code = <KEY_RESTART>;
+			gpios = <&gpio0 0 GPIO_ACTIVE_LOW>;
+			default-state = "off";
+			debounce-interval = <60>;
+		};
+	};
+
+	leds {
+		compatible = "gpio-leds";
+
+		// Power
+		led@0 {
+			label = "green:power";
+			gpios = <&gpio0 11 GPIO_ACTIVE_LOW>;
+			default-state = "off";
+		};
+
+		// xPON
+		led@1 {
+			label = "green:xpon";
+			gpios = <&gpio0 10 GPIO_ACTIVE_LOW>;
+			default-state = "off";
+		};
+
+		// internet
+		led@3 {
+			label = "green:inet";
+			gpios = <&gpio0 1 GPIO_ACTIVE_LOW>;
+			default-state = "off";
+		};
+
+		// Wireless
+		led@4 {
+			label = "green:wlan";
+			gpios = <&gpio0 6 GPIO_ACTIVE_LOW>;
+			default-state = "off";
+		};
+
+		// Phone
+		led@5 {
+			label = "green:phone";
+			gpios = <&gpio0 5 GPIO_ACTIVE_HIGH>;
+			default-state = "off";
+		};
+
+		// LOS
+		led@2 {
+			label = "red:los";
+			gpios = <&gpio0 3 GPIO_ACTIVE_HIGH>;
+			default-state = "off";
+		};
+	};
+};
+
+&gpio0 {
+	status = "okay";
+};
+
+&gpio1 {
+	status = "okay";
+};
+
+&pcie0 {
+	status = "okay";
+};
+
+&pcie1 {
+	status = "okay";
+};
+
+&snfi {
+	status = "okay";
+};
+
+&eth {
+	status = "okay";
+};
+
+&gdm1 {
+	status = "okay";
+};
+
+&spi_nand {
+	partitions {
+		compatible = "fixed-partitions";
+		#address-cells = <1>;
+		#size-cells = <1>;
+
+		partition@0 {
+			label = "uboot-atf";
+			reg = <0x00000000 0x00080000>;
+			read-only;
+		};
+
+		partition@1 {
+			label = "romfile";
+			reg = <0x80000 0xa0000>;
+			read-only;
+		};
+
+		partition@2 {
+			label = "misc";
+			reg = <0x0a0000 0x1a0000>;
+			read-only;
+		};
+
+		// Fist 512 have header of kernel
+		// flash write 0x01a0000 0x$filesize $loadaddr
+		partition@3 {
+			label = "chainloader";
+			reg = <0x01a0000 0x0100000>;
+			read-only;
+		};
+
+		partition@4 {
+			label = "ubi";
+			reg = <0x02a0000 0x7260000>;
+		};
+
+		/* reserved for bad block table */
+		partition@5 {
+			label = "reserved_bmt";
+			reg = <0x7500000 0x0b00000>;
+			read-only;
+		};
+	};
+};
