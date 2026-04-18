@@ -256,5 +256,12 @@
 			spi-tx-bus-width = <1>;
 			spi-rx-bus-width = <2>;
 		};
+
+		spi_nor: flash@0 {
+			compatible = "spi-nor";
+			reg = <1>;
+			use-default-sizes;
+			spi-max-frequency = <25000000>;
+		};
 	};
 };
