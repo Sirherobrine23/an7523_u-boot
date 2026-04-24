@@ -1,0 +1,23 @@
+loadaddr=0x86a00000
+ipaddr=192.168.1.1
+serverip=192.168.1.10
+bootfile=openwrt-openwrt-airoha-en7523-mikrotik_e60iugs-initramfs-kernel.bin
+firfile=openwrt-openwrt-airoha-en7523-mikrotik_e60iugs-squashfs-sysupgrade.bin
+bootled_pwr=green:power
+ubi_read_openwrt=ubi read $loadaddr fit && iminfo $loadaddr
+boot_openwrt=led $bootled_pwr on ; run ubi_read_openwrt && bootm $loadaddr#$bootconf ; led $bootled_pwr off
+boot_ubi=ubi part ubi && run boot_openwrt
+boot_tftp=tftpboot $loadaddr $bootfile && bootm $loadaddr#$bootconf
+firm_install=tftpboot $loadaddr $firfile && ubi write $loadaddr fit 0x$filesize
+format_ubi_part=mtd erase ubi && ubi part ubi && ubi create ubootenv 126976 && ubi create ubootenv2 126976 && ubi create fit && run firm_install
+bootconf=config-1
+bootcmd=run boot_ubi
+bootdelay=3
+bootmenu_confirm_return=askenv - Press ENTER to return to menu ; bootmenu 20
+bootmenu_default=0
+bootmenu_delay=3
+bootmenu_title=      34m( ( ( mOpenWrt34m ) ) )
+bootmenu_0=Run default boot command.=run boot_openwrt
+bootmenu_1=Boot system via TFTP.=run boot_tftp ; run bootmenu_confirm_return
+bootmenu_2=Format UBI partition.=run format_ubi_part
+bootmenu_3=Reboot.=reset

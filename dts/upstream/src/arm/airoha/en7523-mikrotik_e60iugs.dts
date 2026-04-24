@@ -1,0 +1,133 @@
+// SPDX-License-Identifier: (GPL-2.0-only OR BSD-2-Clause)
+/dts-v1/;
+
+/* Bootloader installs ATF here */
+/memreserve/ 0x80000000 0x200000;
+
+#include <dt-bindings/input/linux-event-codes.h>
+#include "en7523.dtsi"
+
+/ {
+	model = "MikroTik E60iUGS (hEX S 2025)";
+	compatible = "mikrotik,e60iugs", "airoha,en7523";
+
+	aliases {
+		serial0 = &uart1;
+	};
+
+	chosen {
+		bootargs = "console=ttyS0,115200 earlycon";
+		stdout-path = "serial0:115200n8";
+		linux,usable-memory-range = <0x80200000 0x1fe00000>;
+	};
+
+	memory@80000000 {
+		device_type = "memory";
+		reg = <0x80000000 0x20000000>;
+	};
+
+	keys {
+		compatible = "gpio-keys-polled";
+		poll-interval = <100>;
+
+		reset {
+			label = "reset";
+			linux,code = <KEY_RESTART>;
+			gpios = <&gpio0 11 GPIO_ACTIVE_LOW>;
+			default-state = "off";
+			debounce-interval = <60>;
+		};
+
+		mode {
+			label = "mode";
+			debounce-interval = <60>;
+			gpios = <&gpio0 15 GPIO_ACTIVE_LOW>;
+		};
+	};
+
+	leds {
+		compatible = "gpio-leds";
+
+		led@0 {
+			gpios = <&gpio0 0 GPIO_ACTIVE_HIGH>;
+			label = "blue:power";
+			default-state = "off";
+		};
+
+		// sfp1
+		led@12 {
+			gpios = <&gpio0 12 GPIO_ACTIVE_LOW>;
+			label = "green:sfp1";
+			default-state = "off";
+		};
+	};
+};
+
+&gpio0 {
+	status = "okay";
+};
+
+&gpio1 {
+	status = "okay";
+};
+
+&pcie0 {
+	status = "okay";
+};
+
+&pcie1 {
+	status = "okay";
+};
+
+&snfi {
+	status = "okay";
+
+	spi@0 {
+		compatible = "jedec,spi-nor";
+		reg = <0>;
+		spi-max-frequency = <50000000>;
+		spi-tx-bus-width = <1>;
+		spi-rx-bus-width = <2>;
+
+		partitions {
+			compatible = "fixed-partitions";
+			#address-cells = <1>;
+			#size-cells = <1>;
+
+			partition@0 {
+				label = "bootloader";
+				reg = <0x000000 0x0f0000>;
+			};
+
+			partition@fa000 {
+				label = "art";
+				reg = <0x0f0000 0x010000>;
+				read-only;
+			};
+		};
+	};
+
+};
+
+&spi_nand {
+	reg = <1>;
+
+	partitions {
+		compatible = "fixed-partitions";
+		#address-cells = <1>;
+		#size-cells = <1>;
+
+		partition@0 {
+			label = "ubi";
+			reg = <0x0 0x8000000>;
+		};
+	};
+};
+
+&eth {
+	status = "okay";
+};
+
+&gdm1 {
+	status = "okay";
+};
