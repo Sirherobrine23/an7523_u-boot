@@ -9,7 +9,7 @@ bootfile=openwrt-airoha-en7523-tplink_ex530v-v1-initramfs-kernel.bin
 boot_tftp=tftpboot $loadaddr $bootfile && bootm $loadaddr#$bootconf
 ubi_read_openwrt=ubi read $loadaddr fit && iminfo $loadaddr
 
-boot_openwrt=led $bootled_pwr on ; run ubi_read_openwrt && bootm $loadaddr#$bootconf ; led $bootled_pwr off
+boot_openwrt=led $bootled_pwr blink 155; run ubi_read_openwrt && bootm $loadaddr#$bootconf ; led $bootled_pwr off
 boot_ubi=ubi part ubi && run boot_openwrt
 
 format_ubi_part=mtd read spi-nand0 $loadaddr 0xa0000 0x400000 && \
