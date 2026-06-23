@@ -1,0 +1,29 @@
+loadaddr=0x86a00000
+ipaddr=192.168.1.1
+serverip=192.168.1.10
+bootled_pwr=green:power
+
+bootconf=config-1
+bootfile=openwrt-airoha-en7523-tplink_ex530v-v1-initramfs-kernel.bin
+
+boot_tftp=tftpboot $loadaddr $bootfile && bootm $loadaddr#$bootconf
+ubi_read_openwrt=ubi read $loadaddr fit && iminfo $loadaddr
+
+boot_openwrt=led $bootled_pwr on ; run ubi_read_openwrt && bootm $loadaddr#$bootconf ; led $bootled_pwr off
+boot_ubi=ubi part ubi && run boot_openwrt
+
+format_ubi_part=mtd read spi-nand0 $loadaddr 0xa0000 0x400000 && \
+  mtd erase ubi && ubi part ubi && \
+  ubi create ubootenv 0x1f000 && ubi create ubootenv2 0x1f000 && \
+  ubi create art 0x400000 && ubi write $loadaddr art 0x400000
+
+bootcmd=run boot_ubi
+bootdelay=3
+bootmenu_confirm_return=askenv - Press ENTER to return to menu ; bootmenu 20
+bootmenu_default=0
+bootmenu_delay=3
+bootmenu_title=      34m( ( ( mOpenWrt34m ) ) )
+bootmenu_0=Run default boot command.=run boot_openwrt
+bootmenu_1=Boot system via TFTP.=run boot_tftp ; run bootmenu_confirm_return
+bootmenu_3=Format UBI partition for ex530v.=run format_ubi_part
+bootmenu_5=Reboot.=reset
