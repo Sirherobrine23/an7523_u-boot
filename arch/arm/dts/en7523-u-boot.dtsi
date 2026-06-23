@@ -2,9 +2,6 @@
 
 #include <dt-bindings/reset/airoha,en7523-reset.h>
 
-/delete-node/ &gpio0;
-/delete-node/ &gpio1;
-
 / {
 	reserved-memory {
 		#address-cells = <1>;
