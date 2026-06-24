@@ -1,4 +1,4 @@
-loadaddr=0x86a00000
+loadaddr=0x89400000
 ipaddr=192.168.1.1
 serverip=192.168.1.10
 bootled_pwr=green:power
