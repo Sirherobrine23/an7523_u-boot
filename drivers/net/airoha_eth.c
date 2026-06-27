@@ -32,7 +32,7 @@
 
 #define AIROHA_MAX_NUM_GDM_PORTS	4
 #define AIROHA_MAX_NUM_QDMA		1
-#define AIROHA_MAX_NUM_RSTS		3
+#define AIROHA_MAX_NUM_RSTS		4
 #define AIROHA_MAX_NUM_XSI_RSTS		4
 
 #define AIROHA_MAX_NUM_SWITCH_PORT	4
@@ -1006,6 +1006,10 @@ static int airoha_eth_probe(struct udevice *dev)
 		return ret;
 
 	ret = reset_get_by_name(dev, "qdma", &eth->rsts.resets[2]);
+	if (ret)
+		return ret;
+
+	ret = reset_get_by_name(dev, "switch", &eth->rsts.resets[3]);
 	if (ret)
 		return ret;
 

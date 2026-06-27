@@ -220,10 +220,11 @@
 		resets = <&scu EN7523_FE_RST>,
 			 <&scu EN7523_FE_PDMA_RST>,
 			 <&scu EN7523_FE_QDMA_RST>,
+			 <&scu EN7523_GSW_RST>,
 			 <&scu EN7523_DUAL_HSI0_MAC_RST>,
 			 <&scu EN7523_DUAL_HSI1_MAC_RST>,
 			 <&scu EN7523_HSI_MAC_RST>;
-		reset-names = "fe", "pdma", "qdma",
+		reset-names = "fe", "pdma", "qdma", "switch",
 			      "hsi0-mac", "hsi1-mac", "hsi-mac";
 
 		#address-cells = <1>;
