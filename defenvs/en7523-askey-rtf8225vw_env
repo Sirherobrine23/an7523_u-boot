@@ -1,0 +1,34 @@
+loadaddr=0x89400000
+ipaddr=192.168.1.1
+serverip=192.168.1.10
+bootled_pwr=green:power
+
+bootconf=config-1
+bootfile=openwrt-airoha-en7523-askey_rtf8225vw-initramfs-kernel.bin
+
+boot_tftp=tftpboot $loadaddr $bootfile && bootm $loadaddr#$bootconf
+ubi_read_openwrt=ubi read $loadaddr fit && iminfo $loadaddr
+
+boot_openwrt=led $bootled_pwr blink 155; run ubi_read_openwrt && bootm $loadaddr#$bootconf ; led $bootled_pwr off
+boot_ubi=ubi part ubi && run boot_openwrt
+
+format_ubi_part=\
+  mtd read spi-nand0 0x89400000 0x50c0000 0x40000 && \  # bootenv0
+  mtd read spi-nand0 0x89440000 0x5100000 0x40000 && \  # bootenv1
+  mtd read spi-nand0 0x89480000 0x6dc0000 0x240000 && \ # ART/reservearea
+  \
+  mtd erase ubi && ubi part ubi && \
+  ubi create ubootenv 0x40000 && ubi write 0x89400000 ubootenv 0x400000 && \
+  ubi create ubootenv2 0x40000 && ubi write 0x89440000 ubootenv2 0x400000 && \
+  ubi create art 0x400000 && ubi write 0x89480000 art 0x400000
+
+bootcmd=run boot_ubi
+bootdelay=3
+bootmenu_confirm_return=askenv - Press ENTER to return to menu ; bootmenu 20
+bootmenu_default=0
+bootmenu_delay=3
+bootmenu_title=      34m( ( ( mOpenWrt34m ) ) )
+bootmenu_0=Run default boot command.=run boot_openwrt
+bootmenu_1=Boot system via TFTP.=run boot_tftp ; run bootmenu_confirm_return
+bootmenu_3=Format UBI partition.=ubi info ubi && (echo not require format again) || (run format_ubi_part && echo now install openwrt with initramfs)
+bootmenu_5=Reboot.=reset
