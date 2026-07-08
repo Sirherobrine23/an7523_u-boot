@@ -2,7 +2,7 @@
 /dts-v1/;
 
 #include <dt-bindings/input/linux-event-codes.h>
-#include <dt-bindings/gpio/gpio.h>
+#include <dt-bindings/leds/common.h>
 #include "en7523.dtsi"
 
 / {
@@ -23,7 +23,6 @@
 		device_type = "memory";
 		reg = <0x80000000 0x20000000>;
 	};
-
 	keys {
 		compatible = "gpio-keys";
 
@@ -46,6 +45,66 @@
 			linux,code = <KEY_WPS_BUTTON>;
 			gpios = <&pinctrl 11 GPIO_ACTIVE_LOW>;
 			debounce-interval = <60>;
+		};
+	};
+
+	leds {
+		compatible = "gpio-leds";
+
+		// red:internet
+		led_pon: led@3 {
+			function = LED_FUNCTION_WAN_ONLINE;
+			function-enumerator = <3>;
+			color = <LED_COLOR_ID_RED>;
+			gpios = <&pinctrl 3 GPIO_ACTIVE_HIGH>;
+		};
+
+		// blue:internet
+		led_power: led@10 {
+			function = LED_FUNCTION_WAN_ONLINE;
+			function-enumerator = <10>;
+			color = <LED_COLOR_ID_BLUE>;
+			gpios = <&pinctrl 10 GPIO_ACTIVE_LOW>;
+		};
+
+		// blue:wlan-2g
+		led@9 {
+			function = LED_FUNCTION_WLAN_2GHZ;
+			function-enumerator = <9>;
+			color = <LED_COLOR_ID_BLUE>;
+			gpios = <&pinctrl 9 GPIO_ACTIVE_LOW>;
+		};
+
+		// blue:wlan-5g
+		led@21 {
+			function = LED_FUNCTION_WLAN_5GHZ;
+			function-enumerator = <21>;
+			color = <LED_COLOR_ID_BLUE>;
+			gpios = <&pinctrl 21 GPIO_ACTIVE_LOW>;
+		};
+
+		// green:fxs
+		led@1 {
+			function = LED_FUNCTION_ACTIVITY;
+			function-enumerator = <1>;
+			color = <LED_COLOR_ID_GREEN>;
+			gpios = <&pinctrl 1 GPIO_ACTIVE_LOW>;
+		};
+
+		// red:fxs
+		led@26 {
+			function = LED_FUNCTION_ACTIVITY;
+			function-enumerator = <26>;
+			color = <LED_COLOR_ID_RED>;
+			gpios = <&pinctrl 26 GPIO_ACTIVE_LOW>;
+		};
+
+		// blue:fxs
+		led@27 {
+			function = LED_FUNCTION_ACTIVITY;
+			function-enumerator = <27>;
+			color = <LED_COLOR_ID_BLUE>;
+			gpios = <&pinctrl 27 GPIO_ACTIVE_LOW>;
 		};
 	};
 };

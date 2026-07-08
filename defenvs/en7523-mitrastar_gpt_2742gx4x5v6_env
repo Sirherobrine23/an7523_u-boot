@@ -1,10 +1,10 @@
 loadaddr=0x89400000
 ipaddr=192.168.1.1
 serverip=192.168.1.10
-bootled_pwr=green:power
+bootled_pwr=blue:power
 
 bootconf=config-1
-bootfile=openwrt-airoha-en7523-askey_rtf8225vw-initramfs-kernel.bin
+bootfile=openwrt-airoha-en7523-mitrastar-gpt-2742gx4x5v6-initramfs-kernel.bin
 
 boot_tftp=tftpboot $loadaddr $bootfile && bootm $loadaddr#$bootconf
 ubi_read_openwrt=ubi read $loadaddr fit && iminfo $loadaddr
