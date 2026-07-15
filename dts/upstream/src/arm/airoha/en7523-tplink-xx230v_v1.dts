@@ -21,11 +21,6 @@
 		linux,usable-memory-range = <0x80200000 0x1fe00000>;
 	};
 
-	memory@80000000 {
-		device_type = "memory";
-		reg = <0x80000000 0x10000000>;
-	};
-
 	keys {
 		compatible = "gpio-keys-polled";
 		poll-interval = <100>;
