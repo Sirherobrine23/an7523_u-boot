@@ -752,6 +752,13 @@ config CMD_ENV_READMEM
 	help
 	  Store memory content into environment variable.
 
+config CMD_BIN2MAC
+	bool "bin2mac"
+	help
+	  Convert a raw 6-byte binary MAC address found in memory into
+	  the "xx:xx:xx:xx:xx:xx" string format and store it into an
+	  environment variable (e.g. ethaddr).
+
 config CMD_ENV_CALLBACK
 	bool "env callbacks - print callbacks and their associated variables"
 	help
