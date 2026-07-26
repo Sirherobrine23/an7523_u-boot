@@ -5,17 +5,25 @@ bootled_pwr=green:power
 
 bootconf=config-1
 bootfile=openwrt-airoha-en7523-tplink_xx230v-v1-initramfs-kernel.bin
+bootloaderfile=openwrt-airoha-en7523-tplink_xx230v-v1-uboot-bootloader.bin
 
 boot_tftp=tftpboot $loadaddr $bootfile && bootm $loadaddr#$bootconf
 ubi_read_openwrt=ubi read $loadaddr fit && iminfo $loadaddr
 
-boot_openwrt=led $bootled_pwr blink 155; run ubi_read_openwrt && bootm $loadaddr#$bootconf ; led $bootled_pwr off
+boot_openwrt=led $bootled_pwr blink 255; ( run ubi_read_openwrt || echo Install openwrt ; run boot_tftp ) && bootm $loadaddr#$bootconf ; led $bootled_pwr on
 boot_ubi=ubi part ubi && run boot_openwrt
 
-format_ubi_part=mtd read spi-nand0 $loadaddr 0xa0000 $art_size && \
+upgrade_uboot=\
+  mw.b 0x89600000 0xff 0x100000 && tftpboot 0x89600000 ${bootloaderfile} && \
+  mtd erase u-boot && mtd write u-boot 0x89600000
+
+format_ubi_part=\
+  mtd read spi-nand0 0x89400000 0xa0000 $art_size && \
   mtd erase ubi && ubi part ubi && \
-  ubi create ubootenv 0x1f000 && ubi create ubootenv2 0x1f000 && \
-  ubi create art $art_size && ubi write $loadaddr art $art_size
+  ubi create ubootenv 0x1f000 && \
+  ubi create ubootenv2 0x1f000 && \
+  ubi create art $art_size && ubi write 0x89400000 art $art_size && \
+  run upgrade_uboot
 
 xx230_ubi_part=setenv art_size 0x100000 && run format_ubi_part
 xx530_ubi_part=setenv art_size 0x200000 && run format_ubi_part
@@ -30,4 +38,5 @@ bootmenu_0=Run default boot command.=run boot_openwrt
 bootmenu_1=Boot system via TFTP.=run boot_tftp ; run bootmenu_confirm_return
 bootmenu_2=Format UBI partition for xx230v.=run xx230_ubi_part
 bootmenu_3=Format UBI partition for xx530v.=run xx530_ubi_part
+bootmenu_4=Upgrade u-boot.=run upgrade_uboot
 bootmenu_5=Reboot.=reset

@@ -133,14 +133,13 @@
 
 		partition@0 {
 			label = "u-boot";
-			reg = <0x00000000 0x00100000>;
-			read-only;
+			reg = <0x000000 0x100000>;
 		};
 
 		partition@100000 {
 			label = "ubi";
 			compatible = "linux,ubi";
-			reg = <0x00100000 0x10000000>;
+			reg = <0x100000 0x000000>;
 		};
 	};
 };

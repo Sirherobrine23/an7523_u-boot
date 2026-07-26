@@ -5,17 +5,23 @@ bootled_pwr=green:power
 
 bootconf=config-1
 bootfile=openwrt-airoha-en7523-tplink_ex530v-v1-initramfs-kernel.bin
+bootloaderfile=openwrt-airoha-en7523-tplink_ex530v-v1-uboot-bootloader.bin
 
 boot_tftp=tftpboot $loadaddr $bootfile && bootm $loadaddr#$bootconf
 ubi_read_openwrt=ubi read $loadaddr fit && iminfo $loadaddr
 
-boot_openwrt=led $bootled_pwr blink 155; run ubi_read_openwrt && bootm $loadaddr#$bootconf ; led $bootled_pwr off
+boot_openwrt=led $bootled_pwr blink 255; ( run ubi_read_openwrt || echo Install openwrt ; run boot_tftp ) && bootm $loadaddr#$bootconf ; led $bootled_pwr on
 boot_ubi=ubi part ubi && run boot_openwrt
 
-format_ubi_part=mtd read spi-nand0 $loadaddr 0xa0000 0x400000 && \
+upgrade_uboot=\
+  mw.b 0x89800000 0xff 0x100000 && tftpboot 0x89800000 ${bootloaderfile} && \
+  mtd erase u-boot && mtd write u-boot 0x89800000
+
+format_ubi_part=\
+  mtd read spi-nand0 0x89400000 0xa0000 0x400000 && \
   mtd erase ubi && ubi part ubi && \
   ubi create ubootenv 0x1f000 && ubi create ubootenv2 0x1f000 && \
-  ubi create art 0x400000 && ubi write $loadaddr art 0x400000
+  ubi create art 0x400000 && ubi write 0x89400000 art 0x400000
 
 bootcmd=run boot_ubi
 bootdelay=3

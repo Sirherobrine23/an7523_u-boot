@@ -2,6 +2,7 @@
 /dts-v1/;
 
 #include <dt-bindings/input/linux-event-codes.h>
+#include <dt-bindings/leds/common.h>
 #include <dt-bindings/gpio/gpio.h>
 #include "en7523.dtsi"
 
@@ -17,6 +18,67 @@
 		bootargs = "console=ttyS0,115200 earlycon";
 		stdout-path = "serial0:115200n8";
 		linux,usable-memory-range = <0x80200000 0x1fe00000>;
+	};
+
+	keys {
+		compatible = "gpio-keys";
+
+		reset {
+			label = "reset";
+			linux,code = <KEY_RESTART>;
+			gpios = <&pinctrl 0 GPIO_ACTIVE_LOW>;
+			debounce-interval = <60>;
+		};
+
+		wps5 {
+			label = "wps5";
+			linux,code = <KEY_WPS_BUTTON>;
+			gpios = <&pinctrl 21 GPIO_ACTIVE_LOW>;
+			debounce-interval = <60>;
+		};
+
+		wps2 {
+			label = "wps2";
+			linux,code = <KEY_WPS_BUTTON>;
+			gpios = <&pinctrl 26 GPIO_ACTIVE_LOW>;
+			debounce-interval = <60>;
+		};
+	};
+
+	leds {
+		compatible = "gpio-leds";
+
+		/* 2.4Ghz */
+		led@10 {
+			color = <LED_COLOR_ID_BLUE>;
+			function = LED_FUNCTION_WLAN_2GHZ;
+			function-enumerator = <10>;
+			gpios = <&pinctrl 10 GPIO_ACTIVE_LOW>;
+		};
+
+		/* 5Ghz */
+		led@11 {
+			color = <LED_COLOR_ID_BLUE>;
+			function = LED_FUNCTION_WLAN_5GHZ;
+			function-enumerator = <11>;
+			gpios = <&pinctrl 11 GPIO_ACTIVE_LOW>;
+		};
+
+		/* Power */
+		led_power: led@8 {
+			color = <LED_COLOR_ID_BLUE>;
+			function = LED_FUNCTION_WAN_ONLINE;
+			function-enumerator = <8>;
+			gpios = <&pinctrl 8 GPIO_ACTIVE_LOW>;
+		};
+
+		/* xPON */
+		led_pon: led@9 {
+			color = <LED_COLOR_ID_RED>;
+			function = LED_FUNCTION_WAN_ONLINE;
+			function-enumerator = <9>;
+			gpios = <&pinctrl 9 GPIO_ACTIVE_LOW>;
+		};
 	};
 };
 
@@ -48,14 +110,13 @@
 
 		partition@0 {
 			label = "u-boot";
-			reg = <0x00000000 0x00100000>;
-			read-only;
+			reg = <0x000000 0x100000>;
 		};
 
 		partition@100000 {
 			label = "ubi";
 			compatible = "linux,ubi";
-			reg = <0x00100000 0x10000000>;
+			reg = <0x100000 0x000000>;
 		};
 	};
 };
