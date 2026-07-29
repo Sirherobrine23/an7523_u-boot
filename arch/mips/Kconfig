@@ -63,6 +63,25 @@ config ARCH_BMIPS
 	select SYSRESET
 	imply CMD_DM
 
+config ARCH_EN75XX
+	bool "Support EcoNet/Airoha EN75xx MIPS platforms"
+	select HAS_FIXED_TIMER_FREQUENCY
+	select DM
+	select DM_SERIAL
+	select EN75XX_SERIAL
+	select OF_CONTROL
+	select ROM_EXCEPTION_VECTORS
+	select SUPPORT_BIG_ENDIAN
+	select SUPPORTS_CPU_MIPS32_R2
+	select SUPPORT_SPL
+	select SPL_SKIP_LOWLEVEL_INIT if SPL
+	select SUPPORT_TPL
+	select SYS_CACHE_SHIFT_5
+	select MIPS_TUNE_34KC
+	help
+	  Support the MIPS34K-based EcoNet/Airoha EN7512 and EN7521 SoCs.
+	  These devices use an SFC boot path and Front-End SRAM before DDR.
+
 config ARCH_MTMIPS
 	bool "Support MediaTek MIPS platforms"
 	select HAS_FIXED_TIMER_FREQUENCY
@@ -201,6 +220,7 @@ source "arch/mips/mach-mscc/Kconfig"
 source "arch/mips/mach-bmips/Kconfig"
 source "arch/mips/mach-jz47xx/Kconfig"
 source "arch/mips/mach-pic32/Kconfig"
+source "arch/mips/mach-en75xx/Kconfig"
 source "arch/mips/mach-mtmips/Kconfig"
 source "arch/mips/mach-octeon/Kconfig"
 

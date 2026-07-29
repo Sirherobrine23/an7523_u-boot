@@ -1,0 +1,59 @@
+menu "EcoNet/Airoha EN75xx platforms"
+	depends on ARCH_EN75XX
+
+config SYS_VENDOR
+	default "econet"
+
+config SYS_SOC
+	default "en7512"
+
+config SYS_BOARD
+	default "en7512"
+
+config SYS_CONFIG_NAME
+	default "en7512"
+
+config SYS_MALLOC_F_LEN
+	default 0x2000
+
+config SYS_DCACHE_SIZE
+	default 32768
+
+config SYS_DCACHE_LINE_SIZE
+	default 32
+
+config SYS_ICACHE_SIZE
+	default 32768
+
+config SYS_ICACHE_LINE_SIZE
+	default 32
+
+config TEXT_BASE
+	default 0x81000000
+
+config SPL_TEXT_BASE
+	default 0x80010000
+
+config SPL_SIZE_LIMIT
+	default 0x30000
+
+config TPL_TEXT_BASE
+	default 0xbfc00000
+
+config TPL_MAX_SIZE
+	default 0x8000
+
+
+config BUILD_TARGET
+	default "u-boot.img" if BOARD_EN7512_REFERENCE
+
+config BOARD_EN7512_REFERENCE
+	bool "EN7512/EN7521 reference board"
+	select BINMAN
+	select SPL_LOADER_SUPPORT if SPL
+	help
+	  Build a boot image compatible with the EN7512/EN7521 TCBoot flow.
+	  TPL initializes the serial flash controller, executes the legacy DDR
+	  calibration stage from FE SRAM and loads SPL into DDR.
+
+endmenu

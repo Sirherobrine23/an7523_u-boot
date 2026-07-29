@@ -1,0 +1,21 @@
+// SPDX-License-Identifier: GPL-2.0+
+/dts-v1/;
+
+#include "econet,en7512.dtsi"
+
+/ {
+	model = "EcoNet EN7512/EN7521 reference board";
+	compatible = "econet,en7512-reference", "econet,en7512";
+
+	aliases {
+		serial0 = &uart0;
+	};
+
+	chosen {
+		stdout-path = "serial0:115200n8";
+	};
+};
+
+&uart0 {
+	status = "okay";
+};

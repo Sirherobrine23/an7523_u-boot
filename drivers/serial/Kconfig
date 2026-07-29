@@ -1108,6 +1108,13 @@ config MTK_SERIAL
 	  The High-speed UART is compatible with the ns16550a UART and have
 	  its own high-speed registers.
 
+config EN75XX_SERIAL
+	bool "EcoNet/Airoha EN75xx serial port support"
+	depends on ARCH_EN75XX
+	help
+	  Support the byte-lane 16550-like UART used by EN7512/EN7521.
+	  The controller also uses a vendor-specific fractional divider.
+
 config MT7620_SERIAL
 	bool "UART driver for MediaTek MT7620 and earlier SoCs"
 	depends on DM_SERIAL && SOC_MT7620

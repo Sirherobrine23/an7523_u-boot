@@ -9,6 +9,7 @@ endif
 
 ifeq ($(CONFIG_TPL_BUILD),y)
 head-$(CONFIG_SOC_MT7621) := arch/mips/mach-mtmips/mt7621/tpl/start.o
+head-$(CONFIG_ARCH_EN75XX) := arch/mips/mach-en75xx/tpl/start.o
 endif
 
 libs-y += arch/mips/cpu/
@@ -16,6 +17,7 @@ libs-y += arch/mips/lib/
 
 machine-$(CONFIG_ARCH_ATH79) += ath79
 machine-$(CONFIG_ARCH_BMIPS) += bmips
+machine-$(CONFIG_ARCH_EN75XX) += en75xx
 machine-$(CONFIG_ARCH_JZ47XX) += jz47xx
 machine-$(CONFIG_MACH_PIC32) += pic32
 machine-$(CONFIG_ARCH_MTMIPS) += mtmips

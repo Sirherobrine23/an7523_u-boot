@@ -1,0 +1,46 @@
+/* SPDX-License-Identifier: GPL-2.0+ */
+#ifndef __MACH_EN7512_H__
+#define __MACH_EN7512_H__
+
+#define EN7512_FLASH_BASE		0xbfc00000
+#define EN7512_SFC_BASE			0xbfa10000
+#define EN7512_CHIP_SCU_BASE		0xbfa20000
+#define EN7512_FE_SRAM_BASE		0xbfa30000
+#define EN7512_FE_SRAM_CACHED		0x9fa30000
+#define EN7512_SYSCTL_BASE		0xbfb00000
+#define EN7512_SMC_BASE			0xbfb10000
+#define EN7512_DRAMC_BASE		0xbfb20000
+#define EN7512_INTC_BASE		0xbfb40000
+#define EN7512_UART0_BASE		0xbfbf0000
+#define EN7512_TIMER_BASE		0xbfbf0100
+#define EN7512_GPIO_BASE		0xbfbf0200
+
+#define EN7512_RESET_CONTROL		(EN7512_SYSCTL_BASE + 0x040)
+#define EN7512_FE_SRAM_SEL		(EN7512_SYSCTL_BASE + 0x958)
+#define EN7512_SCREG_WR0		(EN7512_SYSCTL_BASE + 0x280)
+#define EN7512_REG_SAVE_INFO		(EN7512_SYSCTL_BASE + 0x284)
+
+#define EN7512_DDR_BLOB_ADDR		(EN7512_FE_SRAM_CACHED + 0x2800)
+#define EN7512_DDR_BLOB_OFFSET		0x00008000
+#define EN7512_DDR_BLOB_SIZE		0x00004f70
+#define EN7512_SPL_IMAGE_OFFSET		0x00010000
+#define EN7512_UBOOT_IMAGE_OFFSET	0x00050000
+
+#define EN7512_SPL_HEADER_ADDR		(EN7512_FE_SRAM_BASE + 0x40)
+#define EN7512_TPL_STACK_ADDR		(EN7512_FE_SRAM_BASE + 0xbff0)
+#define EN7512_TPL_SAVED_RA		(EN7512_FE_SRAM_BASE + 0x00)
+
+#define EN7512_SAVE_DRAM_MASK		0x00000fff
+#define EN7512_SAVE_CLK_MASK		0x00fff000
+#define EN7512_SAVE_CLK_SHIFT		12
+
+#ifndef __ASSEMBLY__
+#include <stddef.h>
+#include <linux/types.h>
+
+int en7512_sfc_read(u32 offset, void *dst, size_t len);
+int en7512_sfc_init(void);
+void en7512_run_ddr_blob(void);
+#endif
+
+#endif

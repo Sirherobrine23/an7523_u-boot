@@ -28,6 +28,7 @@ Board-specific doc
    coolpi/index
    coreboot/index
    emcraft/index
+   econet/index
    emulation/index
    gateworks/index
    google/index

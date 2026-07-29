@@ -1,0 +1,10 @@
+The file en7512_ddr.bin is the 20,336-byte FE-SRAM DDR calibration stage
+(spram.bin) from the EN7512/EN7521 vendor Linux 2.6 SDK. It is linked for
+0x9fa32800 and is entered at 0x9fa32800, matching the original boot2 flow. TPL keeps
+KSEG0 in uncached mode until DDR calibration completes.
+
+SHA256:
+792068a4573b20cb8c39cb27df06c45683c11034e6fd07da24ddf7084828faa5
+
+This is a transitional dependency. Replace it with a source implementation
+of the EN7512 DDR2/DDR3 calibration algorithms before upstream submission.

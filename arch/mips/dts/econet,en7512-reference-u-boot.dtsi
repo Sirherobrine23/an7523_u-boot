@@ -1,0 +1,58 @@
+// SPDX-License-Identifier: GPL-2.0+
+#include <linux/stringify.h>
+
+/ {
+	binman: binman {
+		multiple-images;
+	};
+};
+
+&uart0 {
+	bootph-all;
+};
+
+&binman {
+	spl-img {
+		filename = "u-boot-spl.img";
+
+		mkimage {
+			args = "-A", "mips", "-T", "standalone", "-O", "u-boot",
+			       "-C", "none", "-n", "EN7512 U-Boot SPL",
+			       "-a", __stringify(CONFIG_SPL_TEXT_BASE),
+			       "-e", __stringify(CONFIG_SPL_TEXT_BASE);
+
+			u-boot-spl {
+			};
+		};
+	};
+
+	en7512-uboot {
+		filename = "u-boot-en7512.bin";
+		pad-byte = <0xff>;
+
+		u-boot-tpl {
+			offset = <0x00000000>;
+			size = <0x00008000>;
+		};
+
+		ddr-blob {
+			type = "blob-ext";
+			filename = "arch/mips/mach-en75xx/en7512_ddr.bin";
+			offset = <0x00008000>;
+			size = <0x00004f70>;
+		};
+
+		spl {
+			type = "blob";
+			filename = "u-boot-spl.img";
+			offset = <0x00010000>;
+			size = <0x00040000>;
+		};
+
+		u-boot {
+			type = "blob";
+			filename = "u-boot.img";
+			offset = <0x00050000>;
+		};
+	};
+};
