@@ -4,6 +4,7 @@
  * and simplified for U-Boot usage for single TX/RX ring.
  *
  * Copyright (c) 2024 AIROHA Inc
+ * EN751221 support based on econet_eth by Caleb James DeLisle.
  * Author: Lorenzo Bianconi <lorenzo@kernel.org>
  *         Christian Marangi <ansuelsmth@gmail.org>
  */
@@ -13,6 +14,7 @@
 #include <dm/devres.h>
 #include <dm/lists.h>
 #include <mapmem.h>
+#include <malloc.h>
 #include <miiphy.h>
 #include <net.h>
 #include <regmap.h>
@@ -26,7 +28,9 @@
 #include <linux/iopoll.h>
 #include <linux/mii.h>
 #include <linux/time.h>
+#if IS_ENABLED(CONFIG_ARCH_AIROHA)
 #include <asm/arch/scu-regmap.h>
+#endif
 
 #include "airoha/pcs-airoha.h"
 
@@ -59,6 +63,8 @@
 #define   SWITCH_BC_FFP			GENMASK(31, 24)
 #define   SWITCH_UNM_FFP		GENMASK(23, 16)
 #define   SWITCH_UNU_FFP		GENMASK(15, 8)
+#define   SWITCH_CPU_EN			BIT(7)
+#define   SWITCH_CPU_PORT		GENMASK(6, 4)
 #define SWITCH_PMCR(_n)			0x3000 + ((_n) * 0x100)
 #define   SWITCH_IPG_CFG		GENMASK(19, 18)
 #define     SWITCH_IPG_CFG_NORMAL	FIELD_PREP(SWITCH_IPG_CFG, 0x0)
@@ -125,6 +131,9 @@
 	 (_n) == 2 ? GDM2_BASE : GDM1_BASE)
 
 #define REG_GDM_FWD_CFG(_n)		GDM_BASE(_n)
+#define REG_GDM_MAC_LSB(_n)		(GDM_BASE(_n) + 0x08)
+#define REG_GDM_MAC_MSB(_n)		(GDM_BASE(_n) + 0x0c)
+#define REG_GDM_RX_LEN_THR(_n)		(GDM_BASE(_n) + 0x14)
 #define GDM_PAD_EN			BIT(28)
 #define GDM_DROP_CRC_ERR		BIT(23)
 #define GDM_IP4_CKSUM			BIT(22)
@@ -134,6 +143,48 @@
 #define GDM_BCFQ_MASK			GENMASK(11, 8)
 #define GDM_MCFQ_MASK			GENMASK(7, 4)
 #define GDM_OCFQ_MASK			GENMASK(3, 0)
+
+/* EN7512/EN7521 GDM forwarding configuration */
+#define EN751221_GDM_DROP_OVERSIZE	BIT(25)
+#define EN751221_GDM_MYMAC_FPORT	GENMASK(15, 12)
+#define EN751221_GDM_BCAST_FPORT	GENMASK(11, 8)
+#define EN751221_GDM_MCAST_FPORT	GENMASK(7, 4)
+#define EN751221_GDM_DEFAULT_FPORT	GENMASK(3, 0)
+#define EN751221_GDM_OVERSIZE_LEN	GENMASK(31, 16)
+#define EN751221_GDM_RUNT_LEN		GENMASK(15, 0)
+
+/* EN7512/EN7521 QDMA register layout */
+#define EN751221_REG_TX_RING_BASE	0x0008
+#define EN751221_REG_RX_RING_BASE	0x000c
+#define EN751221_REG_TX_CPU_IDX		0x0010
+#define EN751221_REG_TX_DMA_IDX		0x0014
+#define EN751221_REG_RX_CPU_IDX		0x0018
+#define EN751221_REG_RX_DMA_IDX		0x001c
+#define EN751221_REG_FWD_DSCP_BASE	0x0020
+#define EN751221_REG_FWD_BUF_BASE	0x0024
+#define EN751221_REG_FWD_DSCP_CFG	0x0028
+#define EN751221_REG_LMGR_INIT_CFG	0x0030
+#define EN751221_REG_INT_STATUS		0x0050
+#define EN751221_REG_INT_ENABLE		0x0054
+#define EN751221_REG_RX_DELAY_INT	0x005c
+#define EN751221_REG_RX_RING_SIZE	0x0100
+#define EN751221_REG_RX_RING_THR		0x0104
+
+#define EN751221_RING_IDX_MASK		GENMASK(11, 0)
+#define EN751221_HWFWD_LOW_THR_MASK	GENMASK(12, 0)
+#define EN751221_HWFWD_DESC_NUM_MASK	GENMASK(15, 0)
+#define EN751221_HWFWD_OVERHEAD_MASK	GENMASK(23, 16)
+#define EN751221_GLOBAL_CFG_MSG_WORD_SWAP BIT(28)
+
+#define EN751221_TXMSG_CHANNEL_MASK	GENMASK(10, 3)
+#define EN751221_TXMSG_QUEUE_MASK	GENMASK(2, 0)
+#define EN751221_TXMSG_FPORT_MASK	GENMASK(21, 19)
+#define EN751221_FPORT_GDM1		1
+#define EN751221_HW_DSCP_NUM		4
+#define EN751221_RESET_CONTROL2		0xbfb00834
+#define EN751221_FE_SRAM_SEL		0xbfb00958
+#define EN751221_RST_QDMA0		BIT(1)
+#define EN751221_RST_FE			BIT(21)
 
 /* QDMA */
 #define REG_QDMA_GLOBAL_CFG			0x0004
@@ -309,6 +360,13 @@ struct airoha_qdma_fwd_desc {
 	__le32 rsv1;
 };
 
+struct en751221_qdma_fwd_desc {
+	u32 addr;
+	u32 info;
+	u32 msg0;
+	u32 msg1;
+};
+
 struct airoha_queue {
 	struct airoha_qdma_desc *desc;
 	u16 head;
@@ -366,6 +424,7 @@ struct airoha_eth {
 
 struct airoha_eth_soc_data {
 	u32 version;
+	bool econet;
 	int num_xsi_rsts;
 	const char * const *xsi_rsts_names;
 	const char *switch_compatible;
@@ -458,12 +517,36 @@ static inline void dma_unmap_unaligned(dma_addr_t addr, size_t len,
 	dma_unmap_single(start, end - start, dir);
 }
 
+static void *airoha_dma_alloc_coherent(size_t size, unsigned long *dma_addr)
+{
+#if IS_ENABLED(CONFIG_ARCH_EN75XX)
+	void *buf;
+
+	size = ALIGN(size, ARCH_DMA_MINALIGN);
+	buf = memalign(ARCH_DMA_MINALIGN, size);
+	if (!buf)
+		return NULL;
+
+	*dma_addr = virt_to_phys(buf);
+	return buf;
+#else
+	return dma_alloc_coherent(size, dma_addr);
+#endif
+}
+
+static bool airoha_is_en751221(struct airoha_eth *eth)
+{
+	return eth->soc->econet;
+}
+
 static int airoha_get_fe_port(struct airoha_gdm_port *port)
 {
 	struct airoha_qdma *qdma = port->qdma;
 	struct airoha_eth *eth = qdma->eth;
 
 	switch (eth->soc->version) {
+	case 0x7512:
+		return EN751221_FPORT_GDM1;
 	case 0x7523:
 		/* FIXME: GDM1 is the only supported port */
 		return FE_PSE_PORT_GDM1;
@@ -475,6 +558,29 @@ static int airoha_get_fe_port(struct airoha_gdm_port *port)
 
 static void airoha_fe_maccr_init(struct airoha_gdm_port *port)
 {
+	if (airoha_is_en751221(port->qdma->eth)) {
+		u32 fwd_cfg, len_thr;
+
+		/*
+		 * QDMA0 CPU is fport zero. Keep all four forwarding classes
+		 * at zero and reject frames larger than the configured limit.
+		 */
+		fwd_cfg = EN751221_GDM_DROP_OVERSIZE |
+			  FIELD_PREP(EN751221_GDM_MYMAC_FPORT, 0) |
+			  FIELD_PREP(EN751221_GDM_BCAST_FPORT, 0) |
+			  FIELD_PREP(EN751221_GDM_MCAST_FPORT, 0) |
+			  FIELD_PREP(EN751221_GDM_DEFAULT_FPORT, 0);
+		airoha_fe_wr(port->qdma->eth, REG_GDM_FWD_CFG(port->id),
+			     fwd_cfg);
+
+		len_thr = FIELD_PREP(EN751221_GDM_OVERSIZE_LEN,
+				     PKTSIZE_ALIGN) |
+			  FIELD_PREP(EN751221_GDM_RUNT_LEN, 60);
+		airoha_fe_wr(port->qdma->eth, REG_GDM_RX_LEN_THR(port->id),
+			     len_thr);
+		return;
+	}
+
 	/*
 	 * Disable any kind of CRC drop or offload.
 	 * Enable padding of short TX packets to 60 bytes.
@@ -485,6 +591,163 @@ static void airoha_fe_maccr_init(struct airoha_gdm_port *port)
 static int airoha_fe_init(struct airoha_gdm_port *port)
 {
 	airoha_fe_maccr_init(port);
+
+	return 0;
+}
+
+static void en751221_qdma_reset_rx_desc(struct airoha_queue *q, int index)
+{
+	struct airoha_qdma_desc *desc = &q->desc[index];
+	uchar *rx_packet = net_rx_packets[index];
+	u32 next;
+
+	dma_map_single(rx_packet, PKTSIZE_ALIGN, DMA_FROM_DEVICE);
+	next = (index + 1) % q->ndesc;
+
+	WRITE_ONCE(desc->rsv, 0);
+	WRITE_ONCE(desc->ctrl,
+		   FIELD_PREP(QDMA_DESC_LEN_MASK, PKTSIZE_ALIGN));
+	WRITE_ONCE(desc->addr, virt_to_phys(rx_packet));
+	WRITE_ONCE(desc->data, next);
+	WRITE_ONCE(desc->msg0, 0);
+	WRITE_ONCE(desc->msg1, 0);
+	WRITE_ONCE(desc->msg2, 0);
+	WRITE_ONCE(desc->msg3, 0);
+
+	dma_map_unaligned(desc, sizeof(*desc), DMA_TO_DEVICE);
+}
+
+static void en751221_qdma_init_rx_desc(struct airoha_qdma *qdma)
+{
+	struct airoha_queue *q = &qdma->q_rx[0];
+	int i;
+
+	for (i = 0; i < q->ndesc; i++)
+		en751221_qdma_reset_rx_desc(q, i);
+
+	/* On EN751221, equal CPU/HW indices mean that the RX ring is full. */
+	q->head = 0;
+	airoha_qdma_wr(qdma, EN751221_REG_RX_CPU_IDX, 0);
+	airoha_qdma_wr(qdma, EN751221_REG_RX_DMA_IDX, 1);
+}
+
+static int en751221_qdma_init_rx(struct airoha_qdma *qdma)
+{
+	struct airoha_queue *q = &qdma->q_rx[0];
+	unsigned long dma_addr;
+
+	q->ndesc = RX_DSCP_NUM;
+	q->desc = airoha_dma_alloc_coherent(q->ndesc * sizeof(*q->desc), &dma_addr);
+	if (!q->desc)
+		return -ENOMEM;
+
+	memset(q->desc, 0, q->ndesc * sizeof(*q->desc));
+	airoha_qdma_wr(qdma, EN751221_REG_RX_RING_BASE, dma_addr);
+	airoha_qdma_wr(qdma, EN751221_REG_RX_RING_SIZE, q->ndesc);
+	airoha_qdma_wr(qdma, EN751221_REG_RX_RING_THR, 0);
+
+	en751221_qdma_init_rx_desc(qdma);
+	return 0;
+}
+
+static int en751221_qdma_init_tx(struct airoha_qdma *qdma)
+{
+	struct airoha_queue *q = &qdma->q_tx[0];
+	unsigned long dma_addr;
+
+	q->ndesc = TX_DSCP_NUM;
+	q->head = 0;
+	q->desc = airoha_dma_alloc_coherent(q->ndesc * sizeof(*q->desc), &dma_addr);
+	if (!q->desc)
+		return -ENOMEM;
+
+	memset(q->desc, 0, q->ndesc * sizeof(*q->desc));
+	airoha_qdma_wr(qdma, EN751221_REG_TX_RING_BASE, dma_addr);
+	airoha_qdma_wr(qdma, EN751221_REG_TX_CPU_IDX, 0);
+	airoha_qdma_wr(qdma, EN751221_REG_TX_DMA_IDX, 0);
+
+	return 0;
+}
+
+static void en751221_qdma_reset_tx(struct airoha_qdma *qdma)
+{
+	struct airoha_queue *q = &qdma->q_tx[0];
+
+	memset(q->desc, 0, q->ndesc * sizeof(*q->desc));
+	dma_map_single(q->desc, q->ndesc * sizeof(*q->desc), DMA_TO_DEVICE);
+	q->head = 0;
+	airoha_qdma_wr(qdma, EN751221_REG_TX_CPU_IDX, 0);
+	airoha_qdma_wr(qdma, EN751221_REG_TX_DMA_IDX, 0);
+}
+
+static int en751221_qdma_init_hfwd(struct airoha_qdma *qdma)
+{
+	unsigned long dma_addr;
+	u32 status, val;
+	int size;
+
+	size = EN751221_HW_DSCP_NUM * sizeof(struct en751221_qdma_fwd_desc);
+	qdma->hfwd.desc = airoha_dma_alloc_coherent(size, &dma_addr);
+	if (!qdma->hfwd.desc)
+		return -ENOMEM;
+	memset(qdma->hfwd.desc, 0, size);
+	dma_map_single(qdma->hfwd.desc, size, DMA_TO_DEVICE);
+	airoha_qdma_wr(qdma, EN751221_REG_FWD_DSCP_BASE, dma_addr);
+
+	size = AIROHA_MAX_PACKET_SIZE * EN751221_HW_DSCP_NUM;
+	qdma->hfwd.q = airoha_dma_alloc_coherent(size, &dma_addr);
+	if (!qdma->hfwd.q)
+		return -ENOMEM;
+	memset(qdma->hfwd.q, 0, size);
+	dma_map_single(qdma->hfwd.q, size, DMA_TO_DEVICE);
+	airoha_qdma_wr(qdma, EN751221_REG_FWD_BUF_BASE, dma_addr);
+
+	val = FIELD_PREP(HW_FWD_DSCP_PAYLOAD_SIZE_MASK, 0) |
+	      FIELD_PREP(EN751221_HWFWD_LOW_THR_MASK, 1);
+	airoha_qdma_wr(qdma, EN751221_REG_FWD_DSCP_CFG, val);
+
+	val = LMGR_INIT_START |
+	      FIELD_PREP(EN751221_HWFWD_OVERHEAD_MASK, 0x14) |
+	      FIELD_PREP(EN751221_HWFWD_DESC_NUM_MASK,
+			 EN751221_HW_DSCP_NUM);
+	airoha_qdma_wr(qdma, EN751221_REG_LMGR_INIT_CFG, val);
+
+	return read_poll_timeout(airoha_qdma_rr, status,
+				 !(status & LMGR_INIT_START), USEC_PER_MSEC,
+				 30 * USEC_PER_MSEC, qdma,
+				 EN751221_REG_LMGR_INIT_CFG);
+}
+
+static int en751221_qdma_init(struct airoha_qdma *qdma)
+{
+	u32 cfg;
+	int ret;
+
+	/* Stop the engine before replacing all descriptor rings. */
+	airoha_qdma_wr(qdma, REG_QDMA_GLOBAL_CFG, 0);
+	airoha_qdma_wr(qdma, EN751221_REG_INT_ENABLE, 0);
+	airoha_qdma_wr(qdma, EN751221_REG_INT_STATUS, 0xffffffff);
+
+	ret = en751221_qdma_init_rx(qdma);
+	if (ret)
+		return ret;
+
+	ret = en751221_qdma_init_tx(qdma);
+	if (ret)
+		return ret;
+
+	ret = en751221_qdma_init_hfwd(qdma);
+	if (ret)
+		return ret;
+
+	cfg = EN751221_GLOBAL_CFG_MSG_WORD_SWAP |
+	      GLOBAL_CFG_DSCP_BYTE_SWAP_MASK |
+	      GLOBAL_CFG_PAYLOAD_BYTE_SWAP_MASK |
+	      GLOBAL_CFG_CHECK_DONE_MASK |
+	      GLOBAL_CFG_TX_WB_DONE_MASK |
+	      FIELD_PREP(GLOBAL_CFG_MAX_ISSUE_NUM_MASK, 3);
+	airoha_qdma_wr(qdma, REG_QDMA_GLOBAL_CFG, cfg);
+	airoha_qdma_wr(qdma, EN751221_REG_RX_DELAY_INT, 0);
 
 	return 0;
 }
@@ -530,7 +793,7 @@ static int airoha_qdma_init_rx_queue(struct airoha_queue *q,
 	q->ndesc = ndesc;
 	q->head = 0;
 
-	q->desc = dma_alloc_coherent(q->ndesc * sizeof(*q->desc), &dma_addr);
+	q->desc = airoha_dma_alloc_coherent(q->ndesc * sizeof(*q->desc), &dma_addr);
 	if (!q->desc)
 		return -ENOMEM;
 
@@ -577,7 +840,7 @@ static int airoha_qdma_init_tx_queue(struct airoha_queue *q,
 	q->ndesc = size;
 	q->head = 0;
 
-	q->desc = dma_alloc_coherent(q->ndesc * sizeof(*q->desc), &dma_addr);
+	q->desc = airoha_dma_alloc_coherent(q->ndesc * sizeof(*q->desc), &dma_addr);
 	if (!q->desc)
 		return -ENOMEM;
 
@@ -599,7 +862,7 @@ static int airoha_qdma_tx_irq_init(struct airoha_tx_irq_queue *irq_q,
 	int id = irq_q - &qdma->q_tx_irq[0];
 	unsigned long dma_addr;
 
-	irq_q->q = dma_alloc_coherent(size * sizeof(u32), &dma_addr);
+	irq_q->q = airoha_dma_alloc_coherent(size * sizeof(u32), &dma_addr);
 	if (!irq_q->q)
 		return -ENOMEM;
 
@@ -644,7 +907,7 @@ static int airoha_qdma_init_hfwd_queues(struct airoha_qdma *qdma)
 	int size;
 
 	size = HW_DSCP_NUM * sizeof(struct airoha_qdma_fwd_desc);
-	qdma->hfwd.desc = dma_alloc_coherent(size, &dma_addr);
+	qdma->hfwd.desc = airoha_dma_alloc_coherent(size, &dma_addr);
 	if (!qdma->hfwd.desc)
 		return -ENOMEM;
 
@@ -654,7 +917,7 @@ static int airoha_qdma_init_hfwd_queues(struct airoha_qdma *qdma)
 	airoha_qdma_wr(qdma, REG_FWD_DSCP_BASE, dma_addr);
 
 	size = AIROHA_MAX_PACKET_SIZE * HW_DSCP_NUM;
-	qdma->hfwd.q = dma_alloc_coherent(size, &dma_addr);
+	qdma->hfwd.q = airoha_dma_alloc_coherent(size, &dma_addr);
 	if (!qdma->hfwd.q)
 		return -ENOMEM;
 
@@ -718,6 +981,8 @@ static int airoha_qdma_init(struct udevice *dev,
 	qdma->regs = dev_remap_addr_name(dev, "qdma0");
 	if (IS_ERR(qdma->regs))
 		return PTR_ERR(qdma->regs);
+	if (airoha_is_en751221(eth))
+		return en751221_qdma_init(qdma);
 
 	err = airoha_qdma_init_rx(qdma);
 	if (err)
@@ -764,10 +1029,37 @@ static int airoha_pcs_init(struct udevice *dev)
 }
 #endif
 
+static int en751221_hw_init(struct udevice *dev, struct airoha_eth *eth)
+{
+	u32 val;
+	int ret;
+
+	/* Expose the frame-engine register window instead of the FE SRAM. */
+	__raw_writel(0, (void __iomem *)EN751221_FE_SRAM_SEL);
+
+	/* Reset FE and QDMA0, preserving the already-trained switch PHYs. */
+	val = __raw_readl((void __iomem *)EN751221_RESET_CONTROL2);
+	val |= EN751221_RST_QDMA0 | EN751221_RST_FE;
+	__raw_writel(val, (void __iomem *)EN751221_RESET_CONTROL2);
+	mdelay(20);
+	val &= ~(EN751221_RST_QDMA0 | EN751221_RST_FE);
+	__raw_writel(val, (void __iomem *)EN751221_RESET_CONTROL2);
+	mdelay(20);
+
+	ret = airoha_qdma_init(dev, eth, &eth->qdma[0]);
+	if (ret)
+		return ret;
+
+	return 0;
+}
+
 static int airoha_hw_init(struct udevice *dev,
 			  struct airoha_eth *eth)
 {
 	int ret, i;
+
+	if (airoha_is_en751221(eth))
+		return en751221_hw_init(dev, eth);
 
 	/* disable xsi */
 	ret = reset_assert_bulk(&eth->xsi_rsts);
@@ -816,6 +1108,25 @@ static int airoha_switch_init(struct udevice *dev, struct airoha_eth *eth)
 
 	/* Switch doesn't have a DEV, gets address and setup Flood and CPU port */
 	eth->switch_regs = map_sysmem(addr, 0);
+	if (data->econet) {
+		u32 pmcr;
+
+		/* Integrated MT7530: flood unknown traffic to all ports and use P6. */
+		airoha_switch_wr(eth, SWITCH_MFC,
+				 SWITCH_BC_FFP | SWITCH_UNM_FFP | SWITCH_UNU_FFP |
+				 SWITCH_CPU_EN | FIELD_PREP(SWITCH_CPU_PORT, 6));
+
+		pmcr = SWITCH_IPG_CFG_SHRINK | SWITCH_MAC_MODE |
+		       SWITCH_FORCE_MODE | SWITCH_MAC_TX_EN |
+		       SWITCH_MAC_RX_EN | SWITCH_BKOFF_EN | SWITCH_BKPR_EN |
+		       SWITCH_FORCE_SPD_1000 | SWITCH_FORCE_DPX |
+		       SWITCH_FORCE_LNK;
+		airoha_switch_wr(eth, SWITCH_PMCR(5), pmcr);
+		airoha_switch_wr(eth, SWITCH_PMCR(6), pmcr);
+		airoha_switch_wr(eth, SWITCH_PHY_POLL, 0x7f7f8c08);
+
+		return 0;
+	}
 
 	/* Set FLOOD, no CPU switch register */
 	airoha_switch_wr(eth, SWITCH_MFC, SWITCH_BC_FFP | SWITCH_UNM_FFP |
@@ -910,6 +1221,8 @@ static int airoha_alloc_gdm_port(struct udevice *dev, ofnode node)
 	ret = ofnode_read_u32(node, "reg", &id);
 	if (ret)
 		return ret;
+	if (eth->soc->econet)
+		id++;
 
 	if (id > AIROHA_MAX_NUM_GDM_PORTS)
 		return -EINVAL;
@@ -964,60 +1277,65 @@ static int airoha_eth_probe(struct udevice *dev)
 {
 	struct airoha_eth_soc_data *data = (void *)dev_get_driver_data(dev);
 	struct airoha_eth *eth = dev_get_priv(dev);
-	struct regmap *scu_regmap;
 	struct udevice *mdio_dev;
 	ofnode node;
 	int i, ret;
 
-	scu_regmap = airoha_get_scu_regmap();
-	if (IS_ERR(scu_regmap))
-		return PTR_ERR(scu_regmap);
-
-	/* It seems by default the FEMEM_SEL is set to Memory (0x1)
-	 * preventing any access to any QDMA and FrameEngine register
-	 * reporting all 0xdeadbeef (poor cow :( )
-	 */
-	regmap_write(scu_regmap, SCU_SHARE_FEMEM_SEL, 0x0);
-
 	eth->soc = data;
+	if (!data->econet) {
+#if IS_ENABLED(CONFIG_ARCH_AIROHA)
+		struct regmap *scu_regmap;
+
+		scu_regmap = airoha_get_scu_regmap();
+		if (IS_ERR(scu_regmap))
+			return PTR_ERR(scu_regmap);
+
+		/* FEMEM_SEL=1 hides QDMA/FE behind the shared SRAM window. */
+		regmap_write(scu_regmap, SCU_SHARE_FEMEM_SEL, 0x0);
+#else
+		return -EOPNOTSUPP;
+#endif
+	}
 
 	eth->fe_regs = dev_remap_addr_name(dev, "fe");
 	if (!eth->fe_regs)
 		return -ENOMEM;
 
-	eth->rsts.resets = devm_kcalloc(dev, AIROHA_MAX_NUM_RSTS,
-					sizeof(struct reset_ctl), GFP_KERNEL);
-	if (!eth->rsts.resets)
-		return -ENOMEM;
-	eth->rsts.count = AIROHA_MAX_NUM_RSTS;
+	if (!data->econet) {
+		eth->rsts.resets = devm_kcalloc(dev, AIROHA_MAX_NUM_RSTS,
+						sizeof(struct reset_ctl), GFP_KERNEL);
+		if (!eth->rsts.resets)
+			return -ENOMEM;
+		eth->rsts.count = AIROHA_MAX_NUM_RSTS;
 
-	eth->xsi_rsts.resets = devm_kcalloc(dev, data->num_xsi_rsts,
-					    sizeof(struct reset_ctl), GFP_KERNEL);
-	if (!eth->xsi_rsts.resets)
-		return -ENOMEM;
-	eth->xsi_rsts.count = data->num_xsi_rsts;
+		eth->xsi_rsts.resets = devm_kcalloc(dev, data->num_xsi_rsts,
+						    sizeof(struct reset_ctl), GFP_KERNEL);
+		if (!eth->xsi_rsts.resets)
+			return -ENOMEM;
+		eth->xsi_rsts.count = data->num_xsi_rsts;
 
-	ret = reset_get_by_name(dev, "fe", &eth->rsts.resets[0]);
-	if (ret)
-		return ret;
-
-	ret = reset_get_by_name(dev, "pdma", &eth->rsts.resets[1]);
-	if (ret)
-		return ret;
-
-	ret = reset_get_by_name(dev, "qdma", &eth->rsts.resets[2]);
-	if (ret)
-		return ret;
-
-	ret = reset_get_by_name(dev, "switch", &eth->rsts.resets[3]);
-	if (ret)
-		return ret;
-
-	for (i = 0; i < data->num_xsi_rsts; i++) {
-		ret = reset_get_by_name(dev, data->xsi_rsts_names[i],
-					&eth->xsi_rsts.resets[i]);
+		ret = reset_get_by_name(dev, "fe", &eth->rsts.resets[0]);
 		if (ret)
 			return ret;
+
+		ret = reset_get_by_name(dev, "pdma", &eth->rsts.resets[1]);
+		if (ret)
+			return ret;
+
+		ret = reset_get_by_name(dev, "qdma", &eth->rsts.resets[2]);
+		if (ret)
+			return ret;
+
+		ret = reset_get_by_name(dev, "switch", &eth->rsts.resets[3]);
+		if (ret)
+			return ret;
+
+		for (i = 0; i < data->num_xsi_rsts; i++) {
+			ret = reset_get_by_name(dev, data->xsi_rsts_names[i],
+						&eth->xsi_rsts.resets[i]);
+			if (ret)
+				return ret;
+		}
 	}
 
 	ret = airoha_hw_init(dev, eth);
@@ -1029,12 +1347,15 @@ static int airoha_eth_probe(struct udevice *dev)
 		return ret;
 
 	/* Airoha switch mdio PHYs maybe used by several GDM devices */
-	mdio_dev = airoha_switch_mdio_init(dev);
-	if (!IS_ERR_OR_NULL(mdio_dev))
-		eth->switch_mdio_dev = mdio_dev;
+	if (!data->econet) {
+		mdio_dev = airoha_switch_mdio_init(dev);
+		if (!IS_ERR_OR_NULL(mdio_dev))
+			eth->switch_mdio_dev = mdio_dev;
+	}
 
 	ofnode_for_each_subnode(node, dev_ofnode(dev)) {
-		if (!ofnode_device_is_compatible(node, "airoha,eth-mac"))
+		if (!ofnode_device_is_compatible(node, "airoha,eth-mac") &&
+		    !ofnode_device_is_compatible(node, "econet,eth-mac"))
 			continue;
 
 		if (!ofnode_is_enabled(node))
@@ -1050,9 +1371,18 @@ static int airoha_eth_probe(struct udevice *dev)
 
 static int airoha_eth_port_of_to_plat(struct udevice *dev)
 {
+	struct airoha_eth *eth = (void *)dev_get_driver_data(dev);
 	struct airoha_gdm_port *port = dev_get_priv(dev);
+	u32 id;
+	int ret;
 
-	return dev_read_u32(dev, "reg", &port->id);
+	ret = dev_read_u32(dev, "reg", &id);
+	if (ret)
+		return ret;
+
+	port->id = id + (eth->soc->econet ? 1 : 0);
+
+	return 0;
 }
 
 static int airoha_eth_port_probe(struct udevice *dev)
@@ -1078,6 +1408,9 @@ static int airoha_eth_port_probe(struct udevice *dev)
 		return -EINVAL;
 #endif
 	} else {
+		if (eth->soc->econet)
+			return 0;
+
 		/*
 		 * GDM1 device connected to airoha switch. Probe airoha switch
 		 * mdio to be able set/query states of corresponding LAN ports.
@@ -1102,7 +1435,12 @@ static int airoha_eth_init(struct udevice *dev)
 	qid = 0;
 	q = &qdma->q_rx[qid];
 
-	airoha_qdma_init_rx_desc(q);
+	if (airoha_is_en751221(qdma->eth))
+		en751221_qdma_init_rx_desc(qdma);
+	else
+		airoha_qdma_init_rx_desc(q);
+	if (airoha_is_en751221(qdma->eth))
+		en751221_qdma_reset_tx(qdma);
 
 	airoha_qdma_set(qdma, REG_QDMA_GLOBAL_CFG,
 			GLOBAL_CFG_TX_DMA_EN_MASK |
@@ -1173,6 +1511,107 @@ static void airoha_eth_stop(struct udevice *dev)
 			  GLOBAL_CFG_RX_DMA_EN_MASK);
 }
 
+static int en751221_eth_send(struct udevice *dev, void *packet, int length)
+{
+	struct airoha_gdm_port *port = dev_get_priv(dev);
+	struct airoha_qdma *qdma = port->qdma;
+	struct airoha_queue *q = &qdma->q_tx[0];
+	struct airoha_qdma_desc *desc;
+	dma_addr_t dma_addr;
+	u32 index, next, ctrl = 0;
+	int i;
+
+	index = q->head;
+	next = (index + 1) % q->ndesc;
+	desc = &q->desc[index];
+	dma_addr = dma_map_single(packet, length, DMA_TO_DEVICE);
+
+	WRITE_ONCE(desc->rsv, 0);
+	WRITE_ONCE(desc->ctrl, FIELD_PREP(QDMA_DESC_LEN_MASK, length));
+	WRITE_ONCE(desc->addr, virt_to_phys(packet));
+	WRITE_ONCE(desc->data, next);
+	WRITE_ONCE(desc->msg0,
+		   FIELD_PREP(EN751221_TXMSG_CHANNEL_MASK, 0) |
+		   FIELD_PREP(EN751221_TXMSG_QUEUE_MASK, 0));
+	WRITE_ONCE(desc->msg1,
+		   FIELD_PREP(EN751221_TXMSG_FPORT_MASK,
+			      EN751221_FPORT_GDM1));
+	WRITE_ONCE(desc->msg2, 0);
+	WRITE_ONCE(desc->msg3, 0);
+	dma_map_unaligned(desc, sizeof(*desc), DMA_TO_DEVICE);
+
+	airoha_qdma_wr(qdma, EN751221_REG_TX_CPU_IDX, next);
+
+	for (i = 0; i < 10000; i++) {
+		dma_unmap_unaligned((dma_addr_t)desc, sizeof(*desc),
+				    DMA_FROM_DEVICE);
+		ctrl = READ_ONCE(desc->ctrl);
+		if (ctrl & QDMA_DESC_DONE_MASK)
+			break;
+		udelay(1);
+	}
+
+	dma_unmap_single(dma_addr, length, DMA_TO_DEVICE);
+	if (!(ctrl & QDMA_DESC_DONE_MASK))
+		return -ETIMEDOUT;
+
+	q->head = next;
+	return 0;
+}
+
+static int en751221_eth_recv(struct udevice *dev, uchar **packetp)
+{
+	struct airoha_gdm_port *port = dev_get_priv(dev);
+	struct airoha_qdma *qdma = port->qdma;
+	struct airoha_queue *q = &qdma->q_rx[0];
+	struct airoha_qdma_desc *desc;
+	uchar *rx_packet;
+	u32 index, hw_index, length, addr;
+
+	index = (q->head + 1) % q->ndesc;
+	hw_index = airoha_qdma_rr(qdma, EN751221_REG_RX_DMA_IDX) &
+		   EN751221_RING_IDX_MASK;
+	if (index == hw_index)
+		return -EAGAIN;
+
+	desc = &q->desc[index];
+	dma_unmap_unaligned((dma_addr_t)desc, sizeof(*desc),
+			    DMA_FROM_DEVICE);
+	length = FIELD_GET(QDMA_DESC_LEN_MASK, READ_ONCE(desc->ctrl));
+	addr = READ_ONCE(desc->addr);
+	if (!length || length > PKTSIZE_ALIGN) {
+		en751221_qdma_reset_rx_desc(q, index);
+		airoha_qdma_wr(qdma, EN751221_REG_RX_CPU_IDX, index);
+		q->head = index;
+		return -EIO;
+	}
+
+	rx_packet = phys_to_virt(addr);
+	dma_unmap_single((dma_addr_t)rx_packet, PKTSIZE_ALIGN,
+			 DMA_FROM_DEVICE);
+	*packetp = rx_packet;
+
+	return length;
+}
+
+static int en751221_eth_free_pkt(struct udevice *dev, uchar *packet)
+{
+	struct airoha_gdm_port *port = dev_get_priv(dev);
+	struct airoha_qdma *qdma = port->qdma;
+	struct airoha_queue *q = &qdma->q_rx[0];
+	u32 index;
+
+	if (!packet)
+		return 0;
+
+	index = (q->head + 1) % q->ndesc;
+	en751221_qdma_reset_rx_desc(q, index);
+	airoha_qdma_wr(qdma, EN751221_REG_RX_CPU_IDX, index);
+	q->head = index;
+
+	return 0;
+}
+
 static int airoha_eth_send(struct udevice *dev, void *packet, int length)
 {
 	struct airoha_gdm_port *port = dev_get_priv(dev);
@@ -1185,6 +1624,9 @@ static int airoha_eth_send(struct udevice *dev, void *packet, int length)
 	u8 fport;
 	u32 val;
 	int i;
+
+	if (airoha_is_en751221(qdma->eth))
+		return en751221_eth_send(dev, packet, length);
 
 	/*
 	 * There is no need to pad short TX packets to 60 bytes since the
@@ -1247,6 +1689,9 @@ static int airoha_eth_recv(struct udevice *dev, int flags, uchar **packetp)
 	u16 length;
 	int qid;
 
+	if (airoha_is_en751221(qdma->eth))
+		return en751221_eth_recv(dev, packetp);
+
 	qid = 0;
 	q = &qdma->q_rx[qid];
 	desc = &q->desc[q->head];
@@ -1272,6 +1717,9 @@ static int arht_eth_free_pkt(struct udevice *dev, uchar *packet, int length)
 	struct airoha_qdma *qdma = port->qdma;
 	struct airoha_queue *q;
 	int qid;
+
+	if (airoha_is_en751221(qdma->eth))
+		return en751221_eth_free_pkt(dev, packet);
 
 	if (!packet)
 		return 0;
@@ -1323,6 +1771,11 @@ static int arht_eth_write_hwaddr(struct udevice *dev)
 	macaddr_msb = FIELD_PREP(SMACCR1_MAC1, mac[1]) |
 		      FIELD_PREP(SMACCR1_MAC0, mac[0]);
 
+	if (airoha_is_en751221(qdma->eth)) {
+		airoha_fe_wr(qdma->eth, REG_GDM_MAC_LSB(port->id), macaddr_lsb);
+		airoha_fe_wr(qdma->eth, REG_GDM_MAC_MSB(port->id), macaddr_msb);
+	}
+
 	/* Set MAC for Switch */
 	airoha_switch_wr(qdma->eth, SWITCH_SMACCR0, macaddr_lsb);
 	airoha_switch_wr(qdma->eth, SWITCH_SMACCR1, macaddr_msb);
@@ -1332,11 +1785,20 @@ static int arht_eth_write_hwaddr(struct udevice *dev)
 
 static int airoha_eth_bind(struct udevice *dev)
 {
+	const struct airoha_eth_soc_data *data;
+
+	data = (const void *)dev_get_driver_data(dev);
+
 	/*
-	 * Force Probe as we set the Main ETH driver as misc
-	 * to register multiple eth port for each GDM
+	 * Force probe on Airoha ARM SoCs since the parent is a misc device
+	 * responsible for registering the child GDM Ethernet devices.  Do not
+	 * probe EN751221 here: DM_FLAG_PROBE_AFTER_BIND is handled by
+	 * initr_dm_devices() before serial_initialize(), which makes an early
+	 * QDMA/switch failure look like a silent hang.  The EN751221 board
+	 * probes this parent from board_late_init(), immediately before net init.
 	 */
-	dev_or_flags(dev, DM_FLAG_PROBE_AFTER_BIND);
+	if (!data || !data->econet)
+		dev_or_flags(dev, DM_FLAG_PROBE_AFTER_BIND);
 
 	return 0;
 }
@@ -1346,6 +1808,12 @@ static const struct airoha_eth_soc_data en7523_data = {
 	.xsi_rsts_names = en7523_xsi_rsts_names,
 	.num_xsi_rsts = ARRAY_SIZE(en7523_xsi_rsts_names),
 	.switch_compatible = "airoha,en7523-switch",
+};
+
+static const struct airoha_eth_soc_data en751221_data = {
+	.version = 0x7512,
+	.econet = true,
+	.switch_compatible = "mediatek,mt7530",
 };
 
 static const struct airoha_eth_soc_data en7581_data = {
@@ -1362,6 +1830,9 @@ static const struct airoha_eth_soc_data an7583_data = {
 };
 
 static const struct udevice_id airoha_eth_ids[] = {
+	{ .compatible = "econet,en751221-eth",
+	  .data = (ulong)&en751221_data,
+	},
 	{ .compatible = "airoha,en7523-eth",
 	  .data = (ulong)&en7523_data,
 	},

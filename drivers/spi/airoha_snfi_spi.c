@@ -9,6 +9,9 @@
  */
 
 #include <asm/unaligned.h>
+#if IS_ENABLED(CONFIG_ARCH_AIROHA)
+#include <asm/arch/scu-regmap.h>
+#endif
 #include <clk.h>
 #include <dm.h>
 #include <dm/device_compat.h>
@@ -16,11 +19,11 @@
 #include <linux/bitfield.h>
 #include <linux/dma-mapping.h>
 #include <linux/mtd/spinand.h>
+#include <linux/sizes.h>
 #include <linux/time.h>
 #include <regmap.h>
 #include <spi.h>
 #include <spi-mem.h>
-#include <asm/arch/scu-regmap.h>
 
 /* SPI */
 #define REG_SPI_CTRL_READ_MODE			0x0000
@@ -81,8 +84,8 @@
 
 #define REG_SPI_CTRL_NFI2SPI_EN			0x0130
 #define SPI_CTRL_NFI2SPI_EN			BIT(0)
-#define REG_SCUCLK_BOOT_TRP						0x00b8
-#define SCUCLK_BOOT_TRP_BOOT_FROM_EMMC			BIT(6)
+#define REG_SCUCLK_BOOT_TRP			0x00b8
+#define SCUCLK_BOOT_TRP_BOOT_FROM_EMMC		BIT(6)
 #define SPI_NFI_SNF_NFI_CNFG_SPI_MODE			BIT(2)
 #define SPI_CTRL_SFC_STRAP_BOOT_FROM_SPI_NAND	BIT(1)
 
@@ -237,6 +240,7 @@ struct airoha_snand_priv {
 	struct clk *spi_clk;
 
 	u8 *txrx_buf;
+	bool en751221;
 	int dma;
 };
 
@@ -260,33 +264,42 @@ airoha_snand_get_bootstrap(struct airoha_snand_priv *priv, u32 *boot_trp,
 				   u32 *snf_nfi_cnfg, u32 *sfc_strap)
 {
 	int err;
-	struct regmap *regmap_scu = airoha_get_scu_regmap();
 
 	*boot_trp = 0;
 	*snf_nfi_cnfg = 0;
 	*sfc_strap = 0;
 
-	if (!regmap_scu)
+	if (!priv->en751221) {
+#if IS_ENABLED(CONFIG_ARCH_AIROHA)
+		struct regmap *regmap_scu = airoha_get_scu_regmap();
+
+		if (!regmap_scu)
+			return AIROHA_SNAND_BOOTSTRAP_UNKNOWN;
+
+		err = regmap_read(regmap_scu, REG_SCUCLK_BOOT_TRP, boot_trp);
+		if (err)
+			return AIROHA_SNAND_BOOTSTRAP_UNKNOWN;
+
+		if (*boot_trp & SCUCLK_BOOT_TRP_BOOT_FROM_EMMC)
+			return AIROHA_SNAND_BOOTSTRAP_EMMC;
+#else
 		return AIROHA_SNAND_BOOTSTRAP_UNKNOWN;
+#endif
+	}
 
-	err = regmap_read(regmap_scu, REG_SCUCLK_BOOT_TRP, boot_trp);
-	if (err)
-		return AIROHA_SNAND_BOOTSTRAP_UNKNOWN;
+	if (priv->regmap_nfi) {
+		err = regmap_read(priv->regmap_nfi,
+				  REG_SPI_NFI_SNF_NFI_CNFG,
+				  snf_nfi_cnfg);
+		if (err)
+			return AIROHA_SNAND_BOOTSTRAP_UNKNOWN;
 
-	if (*boot_trp & SCUCLK_BOOT_TRP_BOOT_FROM_EMMC)
-		return AIROHA_SNAND_BOOTSTRAP_EMMC;
-
-	err = regmap_read(priv->regmap_nfi, REG_SPI_NFI_SNF_NFI_CNFG,
-			  snf_nfi_cnfg);
-	if (err)
-		return AIROHA_SNAND_BOOTSTRAP_UNKNOWN;
-
-	/* SNF_NFI_CNFG bit 2 selects SPI-NFI.
-	 * If it is clear, the boot
-	 * source is still NAND, but through the parallel NAND path.
-	 */
-	if (!(*snf_nfi_cnfg & SPI_NFI_SNF_NFI_CNFG_SPI_MODE))
-		return AIROHA_SNAND_BOOTSTRAP_NAND;
+		/* SNF_NFI_CNFG bit 2 selects SPI-NFI. If it is clear, the
+		 * boot source is still NAND through the parallel NAND path.
+		 */
+		if (!(*snf_nfi_cnfg & SPI_NFI_SNF_NFI_CNFG_SPI_MODE))
+			return AIROHA_SNAND_BOOTSTRAP_NAND;
+	}
 
 	err = regmap_read(priv->regmap_ctrl, REG_SPI_CTRL_SFC_STRAP, sfc_strap);
 	if (err)
@@ -328,7 +341,19 @@ static int airoha_snand_set_fifo_op(struct airoha_snand_priv *priv,
 
 static int airoha_snand_set_cs(struct airoha_snand_priv *priv, u8 cs)
 {
-	return airoha_snand_set_fifo_op(priv, cs, sizeof(cs));
+	int count = priv->en751221 ? 2 : 1;
+	int err;
+
+	/* EN751221 sporadically drops writes unless the CS operation is sent
+	 * twice. This mirrors the quirk used by the Linux EcoNet port.
+	 */
+	while (count--) {
+		err = airoha_snand_set_fifo_op(priv, cs, sizeof(cs));
+		if (err)
+			return err;
+	}
+
+	return 0;
 }
 
 static int airoha_snand_write_data_to_fifo(struct airoha_snand_priv *priv,
@@ -1226,6 +1251,9 @@ static int airoha_snand_probe(struct udevice *dev)
 		return -ENOMEM;
 	}
 	priv->dev = dev;
+	priv->en751221 = of_machine_is_compatible("econet,en751221") ||
+			   of_machine_is_compatible("econet,en7512") ||
+			   of_machine_is_compatible("econet,en7521");
 
 	ret = regmap_init_mem_index(dev_ofnode(dev), &priv->regmap_ctrl, 0);
 	if (ret) {
@@ -1235,16 +1263,31 @@ static int airoha_snand_probe(struct udevice *dev)
 
 	ret = regmap_init_mem_index(dev_ofnode(dev), &priv->regmap_nfi, 1);
 	if (ret) {
-		dev_err(dev, "failed to init spi nfi regmap\n");
-		return ret;
+		if (!priv->en751221) {
+			dev_err(dev, "failed to init spi nfi regmap\n");
+			return ret;
+		}
+
+		/* EN751221 has no separate NFI/SNFI DMA register bank. */
+		priv->regmap_nfi = NULL;
 	}
 
-	priv->spi_clk = devm_clk_get(dev, "spi");
+	priv->spi_clk = devm_clk_get_optional(dev, "spi");
 	if (IS_ERR(priv->spi_clk)) {
-		dev_err(dev, "unable to get spi clk\n");
-		return PTR_ERR(priv->regmap_ctrl);
+		ret = PTR_ERR(priv->spi_clk);
+		if (ret != -ENOSYS) {
+			dev_err(dev, "unable to get spi clk\n");
+			return ret;
+		}
+
+		/* EN751221 does not require the U-Boot clock framework. */
+		priv->spi_clk = NULL;
 	}
-	clk_enable(priv->spi_clk);
+	if (priv->spi_clk) {
+		ret = clk_enable(priv->spi_clk);
+		if (ret)
+			return ret;
+	}
 
 	type = airoha_snand_get_bootstrap(priv, &boot_trp, &snf_nfi_cnfg,
 					   &sfc_strap);
@@ -1254,10 +1297,13 @@ static int airoha_snand_probe(struct udevice *dev)
 		 airoha_snand_bootstrap_name(type), boot_trp, snf_nfi_cnfg,
 		 sfc_strap);
 
-	/* Do not gate DMA on SFC_STRAP.  Some EN7523 boards strap mixed
-	 * NOR + NAND topologies and still use the SNFI DMA path correctly.
+	/* EN751221 uses only the manual FIFO path. EN7523/AN7581 can use
+	 * the second register bank for SNFI DMA operations.
 	 */
-	priv->dma = 1;
+	priv->dma = !!priv->regmap_nfi;
+
+	if (!priv->regmap_nfi)
+		return 0;
 
 	return airoha_snand_nfi_init(priv);
 }
@@ -1266,6 +1312,10 @@ static int airoha_snand_nfi_set_speed(struct udevice *bus, uint speed)
 {
 	struct airoha_snand_priv *priv = dev_get_priv(bus);
 	int ret;
+
+	/* EN751221 leaves the SFC clock configured by the previous stage. */
+	if (!priv->spi_clk)
+		return 0;
 
 	ret = clk_set_rate(priv->spi_clk, speed);
 	if (ret < 0)

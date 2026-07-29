@@ -5,10 +5,12 @@
 
 / {
 	model = "EcoNet EN7512/EN7521 reference board";
-	compatible = "econet,en7512-reference", "econet,en7512";
+	compatible = "econet,en7512-reference", "econet,en751221",
+		     "econet,en7512";
 
 	aliases {
 		serial0 = &uart0;
+		ethernet0 = &gmac0;
 	};
 
 	chosen {
@@ -17,5 +19,9 @@
 };
 
 &uart0 {
+	status = "okay";
+};
+
+&sfc {
 	status = "okay";
 };

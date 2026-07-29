@@ -129,15 +129,17 @@ source "drivers/net/airoha/Kconfig"
 
 config AIROHA_ETH
 	bool "Airoha Ethernet QDMA Driver"
-	depends on ARCH_AIROHA
+	depends on ARCH_AIROHA || ARCH_EN75XX
 	select MISC
 	select PHYLIB
 	select DEVRES
-	select DM_ETH_PHY
-	select DM_RESET
-	select MDIO_MT7531_MMIO
+	select DM_ETH_PHY if ARCH_AIROHA
+	select DM_RESET if ARCH_AIROHA
+	select MDIO_MT7531_MMIO if ARCH_AIROHA
 	help
-	  This Driver support Airoha Ethernet QDMA Driver
+	  This driver supports the Airoha and EcoNet Ethernet QDMA blocks.
+	  EN7512/EN7521 use a legacy QDMA/GDM register layout selected by
+	  the econet,en751221-eth compatible.
 	  Say Y to enable support for the Airoha Ethernet QDMA.
 
 config ALTERA_TSE

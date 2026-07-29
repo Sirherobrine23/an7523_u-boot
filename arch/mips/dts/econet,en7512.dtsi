@@ -32,11 +32,19 @@
 		};
 
 		sfc: spi@1fa10000 {
-			compatible = "econet,en7512-sfc";
-			reg = <0x1fa10000 0x200>;
+			compatible = "airoha,en7523-spi";
+			reg = <0x1fa10000 0x140>;
 			#address-cells = <1>;
 			#size-cells = <0>;
 			status = "disabled";
+
+			spi_nand: nand@0 {
+				compatible = "spi-nand";
+				reg = <0>;
+				spi-max-frequency = <20000000>;
+				spi-tx-bus-width = <1>;
+				spi-rx-bus-width = <2>;
+			};
 		};
 
 		sram@1fa30000 {
@@ -47,6 +55,26 @@
 		dramc: memory-controller@1fb20000 {
 			compatible = "econet,en7512-dramc";
 			reg = <0x1fb20000 0x1000>;
+		};
+
+		ethernet: ethernet@1fb50000 {
+			compatible = "econet,en751221-eth";
+			reg = <0x1fb50000 0x4000>,
+			      <0x1fb54000 0x1000>;
+			reg-names = "fe", "qdma0";
+			#address-cells = <1>;
+			#size-cells = <0>;
+
+			gmac0: mac@0 {
+				compatible = "econet,eth-mac";
+				reg = <0>;
+				phy-mode = "trgmii";
+			};
+		};
+
+		switch0: switch@1fb58000 {
+			compatible = "mediatek,mt7530";
+			reg = <0x1fb58000 0x8000>;
 		};
 
 		uart0: serial@1fbf0000 {

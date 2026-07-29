@@ -53,10 +53,16 @@ Current limitations
 * DDR initialization temporarily uses the original vendor calibration image,
   linked for execution at ``0x9fa32800``. Its source code was not included in
   the SDK and it must eventually be replaced by a native driver.
-* The SFC implementation used by TPL and SPL is read-only. A Driver Model
-  SPI-MEM/MTD implementation is still required for flash commands and updates.
-* Ethernet, MDIO and switch support are not implemented yet.
-* The target has not yet been validated on physical EN7512/EN7521 hardware.
+* The SFC implementation used by TPL and SPL is read-only. U-Boot proper uses
+  the Airoha EN7523 SPI-MEM driver with the EN751221 double chip-select quirk.
+  Flash erase/write must not be used until the board's BBT/BMT layout has been
+  verified.
+* Ethernet provides a polling-only U-Boot path through EN751221 QDMA0, GDM1
+  and the integrated MT7530. It deliberately preserves switch/PHY reset state
+  during chainloading. Cold-boot PHY initialization and multi-port control
+  still need board-specific validation.
+* U-Boot proper has been chainloaded and validated on physical hardware. The
+  complete BootROM -> TPL -> SPL -> U-Boot cold-boot path remains untested.
 
 TPL reports early failures with one character followed by a newline:
 ``I`` for SFC initialization, ``F`` for DDR image reading, ``H`` for an
