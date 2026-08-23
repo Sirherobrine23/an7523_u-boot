@@ -1,7 +1,8 @@
-bootfile=openwrt-airoha-en7528-tplink_xc220_g3v-initramfs-kernel.bin
+loadaddr=0x89400000
 ipaddr=192.168.1.1
-serverip=192.168.1.2
-loadaddr=0x82000000
+serverip=192.168.1.10
+bootfile=openwrt-airoha-en7528-tplink_xc220-g3v-initramfs-kernel.bin
+bootconf=config-1
 load_initramfs=tftpboot ${loadaddr} ${bootfile}
 netboot=run load_initramfs; bootm ${loadaddr}
 sfprobe=sf probe 0:0 25000000
