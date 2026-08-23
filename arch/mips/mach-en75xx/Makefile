@@ -5,6 +5,7 @@ obj-y += early_sfc.o
 obj-y += tpl/
 else
 obj-y += cpu.o
+obj-$(CONFIG_EN75XX_SCU) += scu-regmap.o
 ifeq ($(CONFIG_SPL_BUILD),y)
 obj-y += early_sfc.o
 obj-y += spl/

@@ -45,7 +45,7 @@ config TEGRA186_RESET
 
 config RESET_AIROHA
 	bool "Reset controller driver for Airoha SoCs"
-	depends on DM_RESET && ARCH_AIROHA
+	depends on DM_RESET && (ARCH_AIROHA || ARCH_EN75XX)
 	default y
 	help
 	  Support for reset controller on Airoha SoCs.

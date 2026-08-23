@@ -5,16 +5,31 @@ config SYS_VENDOR
 	default "econet"
 
 config SYS_SOC
+	default "en7528" if BOARD_EN7528_TPLINK_XC220_G3V
 	default "en7512"
 
 config SYS_BOARD
+	default "en7528" if BOARD_EN7528_TPLINK_XC220_G3V
 	default "en7512"
 
 config SYS_CONFIG_NAME
+	default "en7528" if BOARD_EN7528_TPLINK_XC220_G3V
 	default "en7512"
 
 config SYS_MALLOC_F_LEN
 	default 0x2000
+
+config EN75XX_SCU
+	bool "EcoNet/Airoha EN75xx SCU clock/reset controller"
+	default y if BOARD_EN7528_TPLINK_XC220_G3V
+	select CLK
+	select DM_RESET
+	select REGMAP
+	select RESET_AIROHA
+	help
+	  Enable the EN75xx System Control Unit regmap helpers together with
+	  the Airoha clock and reset-controller drivers.  EN7528 shares the
+	  EN7523 SCU reset layout.
 
 config SYS_DCACHE_SIZE
 	default 32768
@@ -55,5 +70,13 @@ config BOARD_EN7512_REFERENCE
 	  Build a boot image compatible with the EN7512/EN7521 TCBoot flow.
 	  TPL initializes the serial flash controller, executes the legacy DDR
 	  calibration stage from FE SRAM and loads SPL into DDR.
+
+config BOARD_EN7528_TPLINK_XC220_G3V
+	bool "TP-Link XC220-G3V (EN7528, chainloaded)"
+	help
+	  Build U-Boot proper for the TP-Link XC220-G3V. This target assumes a
+	  previous boot stage has initialized DDR and the integrated switch PHYs.
+	  It intentionally produces a plain u-boot.bin for one-time serial loading,
+	  after which Ethernet/TFTP and the 16 MiB SPI-NOR can be used.
 
 endmenu

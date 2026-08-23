@@ -16,7 +16,11 @@
 #include <dm/device_compat.h>
 #include <dm/lists.h>
 #include <regmap.h>
+#if IS_ENABLED(CONFIG_ARCH_AIROHA)
 #include <asm/arch/scu-regmap.h>
+#elif IS_ENABLED(CONFIG_ARCH_EN75XX)
+#include <mach/scu-regmap.h>
+#endif
 
 #include <dt-bindings/clock/en7523-clk.h>
 
@@ -698,6 +702,9 @@ static const struct airoha_clk_soc_data an7583_data = {
 };
 
 static const struct udevice_id airoha_clk_ids[] = {
+	{ .compatible = "airoha,en7528-scu",
+	  .data = (ulong)&en7523_data,
+	},
 	{ .compatible = "airoha,en7523-scu",
 	  .data = (ulong)&en7523_data,
 	},

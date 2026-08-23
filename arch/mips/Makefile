@@ -44,6 +44,7 @@ tune-$(CONFIG_MIPS_TUNE_14KC) += -mtune=14kc
 tune-$(CONFIG_MIPS_TUNE_24KC) += -mtune=24kc
 tune-$(CONFIG_MIPS_TUNE_34KC) += -mtune=34kc
 tune-$(CONFIG_MIPS_TUNE_74KC) += -mtune=74kc
+tune-$(CONFIG_MIPS_TUNE_1004KC) += -mtune=1004kc
 tune-${CONFIG_MIPS_TUNE_OCTEON3} += -mtune=octeon2
 
 # Include default header files

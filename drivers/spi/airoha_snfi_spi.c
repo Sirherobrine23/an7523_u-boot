@@ -1242,6 +1242,8 @@ static int airoha_snand_probe(struct udevice *dev)
 {
 	struct airoha_snand_priv *priv = dev_get_priv(dev);
 	enum airoha_snand_bootstrap type;
+	ofnode child;
+	bool spi_nor = false;
 	u32 boot_trp, snf_nfi_cnfg, sfc_strap;
 	int ret;
 
@@ -1297,12 +1299,21 @@ static int airoha_snand_probe(struct udevice *dev)
 		 airoha_snand_bootstrap_name(type), boot_trp, snf_nfi_cnfg,
 		 sfc_strap);
 
-	/* EN751221 uses only the manual FIFO path. EN7523/AN7581 can use
-	 * the second register bank for SNFI DMA operations.
-	 */
-	priv->dma = !!priv->regmap_nfi;
+	ofnode_for_each_subnode(child, dev_ofnode(dev)) {
+		if (ofnode_device_is_compatible(child, "jedec,spi-nor")) {
+			spi_nor = true;
+			break;
+		}
+	}
 
-	if (!priv->regmap_nfi)
+	/*
+	 * The NFI bank may exist even when the controller is wired to SPI-NOR.
+	 * NOR commands must use the exact manual SPI-mem path; treating a NOR
+	 * dirmap as SNFI DMA corrupts the opcode/address sequence.
+	 */
+	priv->dma = !!priv->regmap_nfi && !spi_nor;
+
+	if (!priv->dma)
 		return 0;
 
 	return airoha_snand_nfi_init(priv);

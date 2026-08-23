@@ -11,7 +11,11 @@
 #include <linux/io.h>
 #include <reset-uclass.h>
 #include <regmap.h>
+#if IS_ENABLED(CONFIG_ARCH_AIROHA)
 #include <asm/arch/scu-regmap.h>
+#elif IS_ENABLED(CONFIG_ARCH_EN75XX)
+#include <mach/scu-regmap.h>
+#endif
 
 #include <dt-bindings/reset/airoha,en7523-reset.h>
 #include <dt-bindings/reset/airoha,en7581-reset.h>
@@ -273,6 +277,8 @@ static int reset_init(struct udevice *dev, const u16 *rst_map, int num_rsts)
 static int airoha_reset_probe(struct udevice *dev)
 {
 	if (ofnode_device_is_compatible(dev_ofnode(dev),
+					"airoha,en7528-scu") ||
+	    ofnode_device_is_compatible(dev_ofnode(dev),
 					"airoha,en7523-scu"))
 		return reset_init(dev, en7523_rst_map,
 				  ARRAY_SIZE(en7523_rst_map));

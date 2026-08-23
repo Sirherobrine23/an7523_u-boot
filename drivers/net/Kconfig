@@ -138,9 +138,7 @@ config AIROHA_ETH
 	select MDIO_MT7531_MMIO if ARCH_AIROHA
 	help
 	  This driver supports the Airoha and EcoNet Ethernet QDMA blocks.
-	  EN7512/EN7521 use a legacy QDMA/GDM register layout selected by
-	  the econet,en751221-eth compatible.
-	  Say Y to enable support for the Airoha Ethernet QDMA.
+	  Say Y to enable support for the Airoha/Econet Ethernet QDMA.
 
 config ALTERA_TSE
 	bool "Altera Triple-Speed Ethernet MAC support"
