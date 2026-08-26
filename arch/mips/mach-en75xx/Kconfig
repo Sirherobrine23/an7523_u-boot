@@ -5,15 +5,15 @@ config SYS_VENDOR
 	default "econet"
 
 config SYS_SOC
-	default "en7528" if BOARD_EN7528_TPLINK_XC220_G3V
+	default "en7528" if BOARD_EN7528_TPLINK_XC220_G3V || BOARD_EN7528_REFERENCE
 	default "en7512"
 
 config SYS_BOARD
-	default "en7528" if BOARD_EN7528_TPLINK_XC220_G3V
+	default "en7528" if BOARD_EN7528_TPLINK_XC220_G3V || BOARD_EN7528_REFERENCE
 	default "en7512"
 
 config SYS_CONFIG_NAME
-	default "en7528" if BOARD_EN7528_TPLINK_XC220_G3V
+	default "en7528" if BOARD_EN7528_TPLINK_XC220_G3V || BOARD_EN7528_REFERENCE
 	default "en7512"
 
 config SYS_MALLOC_F_LEN
@@ -21,7 +21,7 @@ config SYS_MALLOC_F_LEN
 
 config EN75XX_SCU
 	bool "EcoNet/Airoha EN75xx SCU clock/reset controller"
-	default y if BOARD_EN7528_TPLINK_XC220_G3V
+	default y if BOARD_EN7528_TPLINK_XC220_G3V || BOARD_EN7528_REFERENCE
 	select CLK
 	select DM_RESET
 	select REGMAP
@@ -78,5 +78,12 @@ config BOARD_EN7528_TPLINK_XC220_G3V
 	  previous boot stage has initialized DDR and the integrated switch PHYs.
 	  It intentionally produces a plain u-boot.bin for one-time serial loading,
 	  after which Ethernet/TFTP and the 16 MiB SPI-NOR can be used.
+
+config BOARD_EN7528_REFERENCE
+	bool "EcoNet EN7528 reference board (DASAN H660GM-A)"
+	help
+	  Build U-Boot proper for the EcoNet EN7528 reference board, as found
+	  on the DASAN H660GM-A.  Like the XC220-G3V it is chainloaded after a
+	  previous stage has trained DDR, but boots from SPI-NAND.
 
 endmenu
