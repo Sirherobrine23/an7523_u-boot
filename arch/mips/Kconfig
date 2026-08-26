@@ -80,6 +80,7 @@ config ARCH_EN75XX
 	select SYS_CACHE_SHIFT_5
 	select MIPS_TUNE_34KC if BOARD_EN7512_REFERENCE
 	select MIPS_TUNE_1004KC if BOARD_EN7528_TPLINK_XC220_G3V
+	select MIPS_SKIP_CP0_COUNT_CLEAR if BOARD_EN7528_TPLINK_XC220_G3V
 	help
 	  Support EcoNet/Airoha EN75xx MIPS platforms. EN7512/EN7521 are
 	  big-endian MIPS34K devices, while EN7528 is a little-endian MIPS1004Kc
@@ -345,6 +346,14 @@ config MIPS_MACH_EARLY_INIT
 	  CPU / SoC intitialization or image copying. Its called very early
 	  and at this stage the PC might not match the linking address
 	  (CONFIG_TEXT_BASE) - no absolute jump done until this call.
+
+config MIPS_SKIP_CP0_COUNT_CLEAR
+	bool
+	help
+	  Do not clear the CP0 Count register (mtc0 zero, CP0_COUNT) at reset
+	  in arch/mips/cpu/start.S. On some SoCs the Count register is GIC/CM
+	  backed and that write stalls the CPU; such targets select this.
+	  Other MIPS targets keep the generic clear.
 
 config MIPS_CACHE_SETUP
 	bool "Allow generic start code to initialize and setup caches"
