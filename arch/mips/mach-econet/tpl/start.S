@@ -2,7 +2,7 @@
 #include <asm/asm.h>
 #include <asm/regdef.h>
 #include <asm/mipsregs.h>
-#include <mach/en7512.h>
+#include <mach/en751221.h>
 
 	.set noreorder
 

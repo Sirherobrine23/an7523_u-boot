@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: GPL-2.0+
-/* EcoNet/Airoha EN75xx UART */
+/* Airoha UART */
 
 #include <dm.h>
 #include <errno.h>

@@ -4,7 +4,7 @@
 #include <init.h>
 #include <spl.h>
 #include <spl_load.h>
-#include <mach/en7512.h>
+#include <mach/en751221.h>
 
 void __noreturn board_init_f(ulong dummy)
 {

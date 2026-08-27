@@ -21,12 +21,6 @@
 		reg = <0x00000000 0x10000000>;
 	};
 
-	aliases {
-		serial0 = &uart1;
-		ethernet0 = &gdm1;
-		spi0 = &spi;
-	};
-
 	chosen {
 		stdout-path = "serial0:115200n8";
 	};
@@ -36,7 +30,7 @@
 	status = "okay";
 };
 
-&spi {
+&spi0 {
 	status = "okay";
 
 	flash@0 {

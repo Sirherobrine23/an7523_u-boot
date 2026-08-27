@@ -9,7 +9,7 @@
 #include <linux/kernel.h>
 #include <linux/types.h>
 #include <asm/io.h>
-#include <mach/en7512.h>
+#include <mach/en751221.h>
 
 #define SF_READ_IDLE_EN		0x004
 #define SF_MTX_MODE_TOG		0x014

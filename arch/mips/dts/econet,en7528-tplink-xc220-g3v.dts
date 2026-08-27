@@ -5,17 +5,11 @@
 
 / {
 	model = "TP-Link XC220-G3V";
-	compatible = "tplink,xc220-g3v", "econet,en7528";
+	compatible = "tplink,xc220-g3v", "econet,en7528", "airoha,en7528";
 
 	memory@0 {
 		device_type = "memory";
 		reg = <0x00000000 0x10000000>;
-	};
-
-	aliases {
-		serial0 = &uart1;
-		ethernet0 = &gdm1;
-		spi0 = &spi;
 	};
 
 	chosen {
@@ -27,7 +21,7 @@
 	status = "okay";
 };
 
-&spi {
+&spi0 {
 	status = "okay";
 
 	flash@0 {

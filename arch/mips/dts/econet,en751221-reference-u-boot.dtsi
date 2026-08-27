@@ -37,7 +37,7 @@
 
 		ddr-blob {
 			type = "blob-ext";
-			filename = "arch/mips/mach-en75xx/en7512_ddr.bin";
+			filename = "arch/mips/mach-econet/en7512_ddr.bin";
 			offset = <0x00008000>;
 			size = <0x00004f70>;
 		};

@@ -9,9 +9,7 @@
  */
 
 #include <asm/unaligned.h>
-#if IS_ENABLED(CONFIG_ARCH_AIROHA)
-#include <asm/arch/scu-regmap.h>
-#endif
+#include <soc/airoha/scu-regmap.h>
 #include <clk.h>
 #include <dm.h>
 #include <dm/device_compat.h>

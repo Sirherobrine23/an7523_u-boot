@@ -62,7 +62,7 @@ config ADI_SPI3
 
 config AIROHA_SNFI_SPI
 	bool "Airoha SPI memory controller driver"
-	depends on ARCH_AIROHA || ARCH_EN75XX
+	depends on ARCH_AIROHA || ARCH_ECONET
 	select REGMAP
 	select SPI_MEM
 	help

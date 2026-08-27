@@ -63,12 +63,12 @@ config ARCH_BMIPS
 	select SYSRESET
 	imply CMD_DM
 
-config ARCH_EN75XX
-	bool "Support EcoNet/Airoha EN75xx MIPS platforms"
+config ARCH_ECONET
+	bool "Support Airoha MIPS platforms"
 	select HAS_FIXED_TIMER_FREQUENCY
 	select DM
 	select DM_SERIAL
-	select EN75XX_SERIAL
+	select ECONET_SERIAL
 	select OF_CONTROL
 	select ROM_EXCEPTION_VECTORS
 	select SUPPORT_BIG_ENDIAN
@@ -84,7 +84,7 @@ config ARCH_EN75XX
 	select MIPS_SKIP_CP0_COUNT_CLEAR if BOARD_EN7528_TPLINK_XC220_G3V
 	select MIPS_SKIP_CP0_COUNT_CLEAR if BOARD_EN7528_REFERENCE
 	help
-	  Support EcoNet/Airoha EN75xx MIPS platforms. EN7512/EN7521 are
+	  Support Airoha MIPS platforms. EN7512/EN7521 are
 	  big-endian MIPS34K devices, while EN7528 is a little-endian MIPS1004Kc
 	  device. The initial EN7528 target is intended to be chainloaded after
 	  the vendor firmware has trained DDR.
@@ -227,7 +227,7 @@ source "arch/mips/mach-mscc/Kconfig"
 source "arch/mips/mach-bmips/Kconfig"
 source "arch/mips/mach-jz47xx/Kconfig"
 source "arch/mips/mach-pic32/Kconfig"
-source "arch/mips/mach-en75xx/Kconfig"
+source "arch/mips/mach-econet/Kconfig"
 source "arch/mips/mach-mtmips/Kconfig"
 source "arch/mips/mach-octeon/Kconfig"
 

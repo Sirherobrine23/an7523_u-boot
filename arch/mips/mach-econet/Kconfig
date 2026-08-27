@@ -1,35 +1,31 @@
-menu "EcoNet/Airoha EN75xx platforms"
-	depends on ARCH_EN75XX
+menu "Airoha MIPS platforms"
+	depends on ARCH_ECONET
+
+config TARGET_EN751221
+	bool "Airoha EN751221 SoC"
+	select SYSCON
+
+config TARGET_EN7528
+	bool "Airoha EN7528 SoC"
+	select SYSCON
 
 config SYS_VENDOR
 	default "econet"
 
 config SYS_SOC
-	default "en7528" if BOARD_EN7528_TPLINK_XC220_G3V || BOARD_EN7528_REFERENCE
-	default "en7512"
+	default "en751221" if TARGET_EN751221
+	default "en7528" if TARGET_EN7528
 
 config SYS_BOARD
-	default "en7528" if BOARD_EN7528_TPLINK_XC220_G3V || BOARD_EN7528_REFERENCE
-	default "en7512"
+	default "en7512" if TARGET_EN751221
+	default "en7528" if TARGET_EN7528
 
 config SYS_CONFIG_NAME
-	default "en7528" if BOARD_EN7528_TPLINK_XC220_G3V || BOARD_EN7528_REFERENCE
-	default "en7512"
+	default "en7512" if TARGET_EN751221
+	default "en7528" if TARGET_EN7528
 
 config SYS_MALLOC_F_LEN
 	default 0x2000
-
-config EN75XX_SCU
-	bool "EcoNet/Airoha EN75xx SCU clock/reset controller"
-	default y if BOARD_EN7528_TPLINK_XC220_G3V || BOARD_EN7528_REFERENCE
-	select CLK
-	select DM_RESET
-	select REGMAP
-	select RESET_AIROHA
-	help
-	  Enable the EN75xx System Control Unit regmap helpers together with
-	  the Airoha clock and reset-controller drivers.  EN7528 shares the
-	  EN7523 SCU reset layout.
 
 config SYS_DCACHE_SIZE
 	default 32768
@@ -60,10 +56,11 @@ config TPL_MAX_SIZE
 
 
 config BUILD_TARGET
-	default "u-boot.img" if BOARD_EN7512_REFERENCE
+	default "u-boot.img" if TARGET_EN751221
 
 config BOARD_EN7512_REFERENCE
 	bool "EN7512/EN7521 reference board"
+	select TARGET_EN751221
 	select BINMAN
 	select SPL_LOADER_SUPPORT if SPL
 	help
@@ -73,6 +70,7 @@ config BOARD_EN7512_REFERENCE
 
 config BOARD_EN7528_TPLINK_XC220_G3V
 	bool "TP-Link XC220-G3V (EN7528, chainloaded)"
+	select TARGET_EN7528
 	help
 	  Build U-Boot proper for the TP-Link XC220-G3V. This target assumes a
 	  previous boot stage has initialized DDR and the integrated switch PHYs.
@@ -81,6 +79,7 @@ config BOARD_EN7528_TPLINK_XC220_G3V
 
 config BOARD_EN7528_REFERENCE
 	bool "EcoNet EN7528 reference board (DASAN H660GM-A)"
+	select TARGET_EN7528
 	help
 	  Build U-Boot proper for the EcoNet EN7528 reference board, as found
 	  on the DASAN H660GM-A.  Like the XC220-G3V it is chainloaded after a

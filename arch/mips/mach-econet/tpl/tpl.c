@@ -4,7 +4,7 @@
 #include <linux/byteorder/generic.h>
 #include <linux/types.h>
 #include <asm/io.h>
-#include <mach/en7512.h>
+#include <mach/en751221.h>
 
 #define IH_MAGIC	0x27051956
 #define IH_HDR_SIZE	64

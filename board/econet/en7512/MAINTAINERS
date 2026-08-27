@@ -1,8 +1,8 @@
 EN7512 REFERENCE BOARD
 S: Orphan
-F: arch/mips/mach-en75xx/
+F: arch/mips/mach-econet/
 F: board/econet/en7512/
 F: configs/en7512_reference_defconfig
-F: arch/mips/dts/econet,en7512-reference.dts
+F: arch/mips/dts/econet,en751221-reference.dts
 F: doc/board/econet/
 F: tools/en7512_image.py

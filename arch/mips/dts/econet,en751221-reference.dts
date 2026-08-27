@@ -1,0 +1,21 @@
+// SPDX-License-Identifier: GPL-2.0+
+/dts-v1/;
+
+#include "econet,en751221.dtsi"
+
+/ {
+	model = "Airoha EN751221 reference board";
+	compatible = "econet,en751221-reference", "econet,en751221";
+
+	chosen {
+		stdout-path = "serial0:115200n8";
+	};
+};
+
+&uart0 {
+	status = "okay";
+};
+
+&spi0 {
+	status = "okay";
+};

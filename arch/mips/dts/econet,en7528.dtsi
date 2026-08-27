@@ -3,7 +3,7 @@
 #include <dt-bindings/reset/airoha,en7523-reset.h>
 
 / {
-	compatible = "econet,en7528";
+	compatible = "econet,en7528", "airoha,en7528";
 	#address-cells = <1>;
 	#size-cells = <1>;
 
@@ -18,21 +18,42 @@
 		};
 	};
 
+	aliases {
+		serial0 = &uart1;
+		ethernet0 = &gdm1;
+	};
+
 	soc {
 		compatible = "simple-bus";
 		#address-cells = <1>;
 		#size-cells = <1>;
 		ranges;
 
-		scuclk: system-controller@1fa20000 {
-			compatible = "airoha,en7528-scu";
-			reg = <0x1fa20000 0x400>,
-			      <0x1fb00000 0x1000>;
+		chip_scu: syscon@1fa20000 {
+			compatible = "airoha,scuclk", "airoha,en7528-chip-scu", "syscon";
+			reg = <0x1fa20000 0x400>;
+		};
+
+		scuclk: system-controller@1fb00000 {
+			compatible = "airoha,en7528-scu", "syscon";
+			reg = <0x1fb00000 0x1000>;
+
+			airoha,chip-scu = <&chip_scu>;
 			#clock-cells = <1>;
 			#reset-cells = <1>;
 		};
 
-		spi: spi@1fa10000 {
+		uart1: serial@1fbf0000 {
+			compatible = "ns16550";
+			reg = <0x1fbf0000 0x30>;
+			reg-io-width = <4>;
+			reg-shift = <2>;
+			clock-frequency = <1843200>;
+			current-speed = <115200>;
+			status = "disabled";
+		};
+
+		spi0: spi@1fa10000 {
 			compatible = "airoha,en7523-spi";
 			reg = <0x1fa10000 0x140>,
 			      <0x1fa11000 0x600>;
@@ -60,7 +81,7 @@
 				compatible = "econet,eth-mac";
 				reg = <1>;
 				phy-mode = "internal";
-	
+
 				fixed-link {
 					speed = <1000>;
 					full-duplex;
@@ -70,18 +91,8 @@
 		};
 
 		switch: switch@1fb58000 {
-			compatible = "airoha,en7528-switch", "airoha,en7523-switch";
+			compatible = "airoha,en7528-switch";
 			reg = <0x1fb58000 0x8000>;
-			status = "disabled";
-		};
-
-		uart1: serial@1fbf0000 {
-			compatible = "ns16550";
-			reg = <0x1fbf0000 0x30>;
-			reg-io-width = <4>;
-			reg-shift = <2>;
-			clock-frequency = <1843200>;
-			current-speed = <115200>;
 			status = "disabled";
 		};
 	};

@@ -11,11 +11,7 @@ struct regmap *airoha_get_scu_regmap(void)
 {
 	ofnode node;
 
-	node = ofnode_by_compatible(ofnode_null(), "airoha,an7583-scu");
-	if (!ofnode_valid(node))
-		return ERR_PTR(-EINVAL);
-
-	node = ofnode_get_parent(node);
+	node = ofnode_by_compatible(ofnode_null(), "airoha,en7528-scu");
 	if (!ofnode_valid(node))
 		return ERR_PTR(-EINVAL);
 
@@ -26,7 +22,7 @@ struct regmap *airoha_get_chip_scu_regmap(void)
 {
 	ofnode node;
 
-	node = ofnode_by_compatible(ofnode_null(), "airoha,en7581-chip-scu");
+	node = ofnode_by_compatible(ofnode_null(), "airoha,en7528-chip-scu");
 	if (!ofnode_valid(node))
 		return ERR_PTR(-EINVAL);
 

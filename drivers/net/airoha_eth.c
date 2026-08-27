@@ -31,18 +31,14 @@
 #include <linux/mii.h>
 #include <linux/time.h>
 #include <asm/system.h>
-#if IS_ENABLED(CONFIG_ARCH_EN75XX)
+#if IS_ENABLED(CONFIG_ARCH_ECONET)
 #include <asm/addrspace.h>
 #define EN7528_RX_UNCACHED(_p) \
 	((uchar *)KSEG1ADDR((uintptr_t)(_p)))
 #else
 #define EN7528_RX_UNCACHED(_p)	(_p)
 #endif
-#if IS_ENABLED(CONFIG_ARCH_AIROHA)
-#include <asm/arch/scu-regmap.h>
-#elif IS_ENABLED(CONFIG_ARCH_EN75XX)
-#include <mach/scu-regmap.h>
-#endif
+#include <soc/airoha/scu-regmap.h>
 
 #include "airoha/pcs-airoha.h"
 
@@ -685,7 +681,7 @@ static u32 airoha_rmw(void __iomem *base, u32 offset, u32 mask, u32 val)
 
 static bool airoha_dma_is_uncached(const void *vaddr)
 {
-#if IS_ENABLED(CONFIG_ARCH_EN75XX)
+#if IS_ENABLED(CONFIG_ARCH_ECONET)
 	return KSEGX((uintptr_t)vaddr) == KSEG1;
 #else
 	return false;
@@ -715,7 +711,7 @@ static inline void dma_unmap_unaligned(dma_addr_t addr, size_t len,
 {
 	uintptr_t start, end;
 
-#if IS_ENABLED(CONFIG_ARCH_EN75XX)
+#if IS_ENABLED(CONFIG_ARCH_ECONET)
 	if (KSEGX((uintptr_t)addr) == KSEG1) {
 		/* Order DMA writes before the CPU consumes an uncached descriptor. */
 		rmb();
@@ -731,7 +727,7 @@ static inline void dma_unmap_unaligned(dma_addr_t addr, size_t len,
 static void *airoha_dma_alloc_aligned(size_t size, size_t align,
 				      unsigned long *dma_addr)
 {
-#if IS_ENABLED(CONFIG_ARCH_EN75XX)
+#if IS_ENABLED(CONFIG_ARCH_ECONET)
 	void *buf;
 
 	align = max_t(size_t, align, ARCH_DMA_MINALIGN);
@@ -754,7 +750,7 @@ static void *airoha_dma_alloc_coherent(size_t size, unsigned long *dma_addr)
 
 static void *airoha_dma_alloc_uncached(size_t size, unsigned long *dma_addr)
 {
-#if IS_ENABLED(CONFIG_ARCH_EN75XX)
+#if IS_ENABLED(CONFIG_ARCH_ECONET)
 	void *buf;
 	uintptr_t start, end;
 
@@ -829,17 +825,6 @@ static void en7528_qdma_trace(struct airoha_qdma *qdma, const char *tag)
 {
 	if (!eth_traced || qdma->eth->soc->version != 0x7528)
 		return;
-
-	printf("[airoha] %-16s cfg=%08x txbase=%08x txcpu=%03x txdma=%03x rxbase=%08x rxcpu=%03x rxdma=%03x lmgr=%08x\n",
-	       tag,
-	       airoha_qdma_rr(qdma, REG_QDMA_GLOBAL_CFG),
-	       airoha_qdma_rr(qdma, REG_TX_RING_BASE(0)),
-	       airoha_qdma_rr(qdma, REG_TX_CPU_IDX(0)) & TX_RING_CPU_IDX_MASK,
-	       airoha_qdma_rr(qdma, REG_TX_DMA_IDX(0)) & TX_RING_DMA_IDX_MASK,
-	       airoha_qdma_rr(qdma, REG_RX_RING_BASE(0)),
-	       airoha_qdma_rr(qdma, REG_RX_CPU_IDX(0)) & RX_RING_CPU_IDX_MASK,
-	       airoha_qdma_rr(qdma, REG_RX_DMA_IDX(0)) & RX_RING_DMA_IDX_MASK,
-	       airoha_qdma_rr(qdma, REG_LMGR_INIT_CFG));
 }
 
 static void en751221_fe_trace(struct airoha_eth *eth, int gdm,
@@ -889,7 +874,7 @@ static void en751221_packet_trace(const char *dir, const void *packet,
 		return;
 
 	printf("[airoha] %s packet: addr=%08lx len=%zu\n", dir,
-	       (ulong)virt_to_phys(packet), length);
+	       (ulong)virt_to_phys((void *)packet), length);
 	print_hex_dump_bytes("[airoha]   ", DUMP_PREFIX_OFFSET, packet, length);
 }
 
@@ -1305,7 +1290,7 @@ static int en751221_qdma_init_rx(struct airoha_qdma *qdma)
 	}
 
 	if (q->ndesc > PKTBUFSRX) {
-		printf("EN75xx QDMA: RX ring needs %d packet buffers, only %d available\n",
+		printf("QDMA: RX ring needs %d packet buffers, only %d available\n",
 		       q->ndesc, PKTBUFSRX);
 		return -EINVAL;
 	}
@@ -1520,7 +1505,7 @@ static int en751221_qdma_init_hfwd(struct airoha_qdma *qdma)
 	 */
 	airoha_qdma_wr(qdma, EN751221_REG_INT_STATUS, 0xffffffff);
 
-	printf("EN75xx QDMA LMGR: desc=%08x(cpu=%08lx) buf=%08x cfg=%08x lmgr=%08x free=%08x used=%08x\n",
+	printf("QDMA LMGR: desc=%08x(cpu=%08lx) buf=%08x cfg=%08x lmgr=%08x free=%08x used=%08x\n",
 	       airoha_qdma_rr(qdma, EN751221_REG_FWD_DSCP_BASE),
 	       (ulong)qdma->hfwd.desc,
 	       airoha_qdma_rr(qdma, EN751221_REG_FWD_BUF_BASE),
@@ -2349,7 +2334,7 @@ static int airoha_eth_probe(struct udevice *dev)
 
 	eth->soc = data;
 	if (!data->direct_reset) {
-#if IS_ENABLED(CONFIG_ARCH_AIROHA) || IS_ENABLED(CONFIG_ARCH_EN75XX)
+#if IS_ENABLED(CONFIG_ARCH_AIROHA) || IS_ENABLED(CONFIG_ARCH_ECONET)
 		struct regmap *scu_regmap;
 
 		scu_regmap = airoha_get_scu_regmap();
@@ -2746,7 +2731,7 @@ static int en751221_eth_send(struct udevice *dev, void *packet, int length)
 		dma_unmap_single(dma_addr, length, DMA_TO_DEVICE);
 	if (qdma->eth->soc->version == 0x7528 ? hw != next :
 	    !(ctrl & QDMA_DESC_DONE_MASK)) {
-		printf("EN75xx QDMA TX timeout: cfg=%08x cpu=%08x hw=%08x int=%08x hwcfg=%08x lmgr=%08x free=%08x used=%08x\n",
+		printf("QDMA TX timeout: cfg=%08x cpu=%08x hw=%08x int=%08x hwcfg=%08x lmgr=%08x free=%08x used=%08x\n",
 		       airoha_qdma_rr(qdma, REG_QDMA_GLOBAL_CFG),
 		       airoha_qdma_rr(qdma, EN751221_REG_TX_CPU_IDX),
 		       airoha_qdma_rr(qdma, EN751221_REG_TX_DMA_IDX),

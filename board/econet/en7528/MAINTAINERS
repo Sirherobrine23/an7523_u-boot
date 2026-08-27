@@ -8,5 +8,3 @@ F: arch/mips/dts/econet,en7528-tplink-xc220-g3v.dts
 F: include/configs/en7528.h
 F: doc/board/econet/en7528.rst
 F: tools/build-en7528-xc220-g3v.sh
-F: arch/mips/mach-en75xx/scu-regmap.c
-F: arch/mips/mach-en75xx/include/mach/scu-regmap.h
