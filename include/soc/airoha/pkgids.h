@@ -500,6 +500,12 @@ static inline u32 get_pkgid(void)
 	return airoha_pkgid_from_screg(value);
 }
 
+static inline u32 get_pkgid_mem(void __iomem *np_scu)
+{
+	return airoha_pkgid_from_screg(readl(np_scu +
+					     AIROHA_NP_SCU_SCREG_WR1));
+}
+
 /* HIR identifies the SoC family, for example EN7523_PKG (0x0c). */
 static inline enum airoha_pkg get_pkg(void)
 {
@@ -525,6 +531,12 @@ static inline u32 get_pdidr(void)
 		return 0;
 
 	return FIELD_GET(AIROHA_NP_SCU_PDIDR_MASK, value);
+}
+
+static inline enum airoha_pkg get_pkg_mem(void __iomem *np_scu)
+{
+	return FIELD_GET(AIROHA_NP_SCU_HIR_MASK,
+			 readl(np_scu + AIROHA_NP_SCU_HIR));
 }
 
 static inline u32 get_pdidr_mem(void __iomem *np_scu)

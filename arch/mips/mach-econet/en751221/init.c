@@ -5,8 +5,11 @@
 #include <asm/io.h>
 #include <linux/sizes.h>
 #include <mach/en751221.h>
+#include <soc/airoha/pkgids.h>
 
 DECLARE_GLOBAL_DATA_PTR;
+
+#define NP_SCU_BASE		((void __iomem *)CKSEG1ADDR(0x1fb00000))
 
 int dram_init(void)
 {
@@ -22,10 +25,19 @@ int dram_init(void)
 
 int print_cpuinfo(void)
 {
+	u32 hir = get_pkg_mem(NP_SCU_BASE);
+	u32 pdidr = get_pdidr_mem(NP_SCU_BASE);
+	u32 pkgid = get_pkgid_mem(NP_SCU_BASE);
 	u32 val = __raw_readl((void __iomem *)EN7512_REG_SAVE_INFO);
 	u32 clk = (val & EN7512_SAVE_CLK_MASK) >> EN7512_SAVE_CLK_SHIFT;
+	const char *soc_name = airoha_soc_name_from_regs(hir, pkgid, pdidr);
 
-	printf("CPU:   Airoha EN7512/EN7521 MIPS34K\n");
+	if (pkgid != END_PACKAGE_ID) {
+		printf("SoC:   Airoha %s\n", soc_name);
+	} else {
+		printf("SoC:   Airoha EN7512/EN7521 MIPS34K\n");
+	}
+
 	if (clk)
 		printf("Clock: %u MHz\n", clk);
 	else

@@ -12,6 +12,7 @@
 #include <linux/errno.h>
 #include <linux/io.h>
 #include <linux/sizes.h>
+#include <soc/airoha/pkgids.h>
 
 DECLARE_GLOBAL_DATA_PTR;
 
@@ -19,10 +20,21 @@ DECLARE_GLOBAL_DATA_PTR;
 #define EN7528_SYS_GLOBAL_PARM				0xbfb00284UL
 #define EN7528_SYS_GLOBAL_DRAM_SIZE_MASK	GENMASK(31, 20)
 #define EN7528_SYS_GLOBAL_DRAM_SIZE_SHIFT	20
+#define NP_SCU_BASE		((void __iomem *)CKSEG1ADDR(0x1fb00000))
 
 int print_cpuinfo(void)
 {
-	printf("CPU:   Airoha EN7528\n");
+	u32 hir = get_pkg_mem(NP_SCU_BASE);
+	u32 pdidr = get_pdidr_mem(NP_SCU_BASE);
+	u32 pkgid = get_pkgid_mem(NP_SCU_BASE);
+	const char *soc_name = airoha_soc_name_from_regs(hir, pkgid, pdidr);
+
+	if (pkgid != END_PACKAGE_ID) {
+		printf("SoC:   Airoha %s\n", soc_name);
+	} else {
+		printf("SoC:   Airoha EN7528\n");
+	}
+
 	return 0;
 }
 
