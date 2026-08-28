@@ -133,9 +133,9 @@ config AIROHA_ETH
 	select MISC
 	select PHYLIB
 	select DEVRES
-	select DM_ETH_PHY if ARCH_AIROHA
-	select DM_RESET if ARCH_AIROHA
-	select MDIO_MT7531_MMIO if ARCH_AIROHA
+	select DM_ETH_PHY
+	select DM_RESET
+	select MDIO_MT7531_MMIO
 	help
 	  This driver supports the Airoha and EcoNet Ethernet QDMA blocks.
 	  Say Y to enable support for the Airoha/Econet Ethernet QDMA.

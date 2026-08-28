@@ -121,7 +121,9 @@ static const struct dm_serial_ops en75xx_serial_ops = {
 };
 
 static const struct udevice_id en75xx_serial_ids[] = {
-	{ .compatible = "econet,en7512-uart" },
+	{ .compatible = "econet,en751221-uart" },
+	{ .compatible = "econet,en7528-uart" },
+	{ .compatible = "airoha,en7523-uart" },
 	{ }
 };
 

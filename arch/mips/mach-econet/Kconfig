@@ -4,10 +4,13 @@ menu "Airoha MIPS platforms"
 config TARGET_EN751221
 	bool "Airoha EN751221 SoC"
 	select SYSCON
+	select MIPS_TUNE_34KC
 
 config TARGET_EN7528
 	bool "Airoha EN7528 SoC"
 	select SYSCON
+	select MIPS_TUNE_1004KC
+	select MIPS_SKIP_CP0_COUNT_CLEAR
 
 config SYS_VENDOR
 	default "econet"

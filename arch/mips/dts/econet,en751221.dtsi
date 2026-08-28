@@ -62,25 +62,11 @@
 
 				interrupt-controller;
 				#interrupt-cells = <2>;
-
-				i2c_pins: i2c-pins {
-					mux {
-						function = "pon_i2c";
-						groups = "pon_i2c";
-					};
-				};
-
-				pon_pinctrl: pon {
-					mux {
-						function = "pon";
-						groups = "pon";
-					};
-				};
 			};
 		};
 
 		uart0: serial@1fbf0000 {
-			compatible = "econet,en7512-uart";
+			compatible = "econet,en751221-uart";
 			reg = <0x1fbf0000 0x30>;
 			clock-frequency = <20000000>;
 			current-speed = <115200>;
@@ -118,7 +104,7 @@
 
 			gdm1: ethernet@1 {
 				compatible = "econet,eth-mac";
-				reg = <1>;
+				reg = <0>;
 				phy-mode = "internal";
 				status = "disabled";
 
@@ -141,10 +127,10 @@
 			#size-cells = <0>;
 			dsa,member = <0 0>;
 
-			mdio: mdio {
+			mdio {
 				#address-cells = <1>;
 				#size-cells = <0>;
-				};
 			};
 		};
 	};
+};

@@ -19,3 +19,15 @@
 &spi0 {
 	status = "okay";
 };
+
+&eth {
+	status = "okay";
+};
+
+&gdm1 {
+	status = "okay";
+};
+
+&switch0 {
+	status = "okay";
+};
