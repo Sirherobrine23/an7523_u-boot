@@ -11,6 +11,7 @@
 #include <linux/errno.h>
 #include <linux/io.h>
 #include <linux/sizes.h>
+#include <soc/airoha/pkgids.h>
 
 DECLARE_GLOBAL_DATA_PTR;
 
@@ -21,7 +22,17 @@ DECLARE_GLOBAL_DATA_PTR;
 
 int print_cpuinfo(void)
 {
-	printf("CPU:   Airoha EN7523/EN7529/EN7562\n");
+	u32 hir = get_pkg();
+	u32 pdidr = get_pdidr();
+	u32 pkgid = get_pkgid();
+	const char *soc_name = airoha_soc_name_from_regs(hir, pkgid, pdidr);
+
+	if (pkgid != END_PACKAGE_ID) {
+		printf("SoC:   Airoha %s\n", soc_name);
+	} else {
+		printf("SoC:   Airoha EN7523/EN7529/EN7562\n");
+	}
+
 	return 0;
 }
 

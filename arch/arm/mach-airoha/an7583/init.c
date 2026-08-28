@@ -7,12 +7,23 @@
 #include <asm/armv8/mmu.h>
 #include <asm/global_data.h>
 #include <asm/system.h>
+#include <soc/airoha/pkgids.h>
 
 DECLARE_GLOBAL_DATA_PTR;
 
 int print_cpuinfo(void)
 {
-	printf("CPU:   Airoha AN7583\n");
+	u32 hir = get_pkg();
+	u32 pdidr = get_pdidr();
+	u32 pkgid = get_pkgid();
+	const char *soc_name = airoha_soc_name_from_regs(hir, pkgid, pdidr);
+
+	if (pkgid != END_PACKAGE_ID) {
+		printf("SoC:   Airoha %s\n", soc_name);
+	} else {
+		printf("SoC:   Airoha AN7583\n");
+	}
+
 	return 0;
 }
 
