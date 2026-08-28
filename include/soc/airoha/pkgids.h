@@ -8,7 +8,7 @@
 #include <linux/kernel.h>
 #include <linux/regmap.h>
 #include <linux/types.h>
-#include <soc/airoha/pkgids.h>
+#include <soc/airoha/scu-regmap.h>
 
 #define AIROHA_PKG_ID_NAME(_id) [(_id)] = #_id
 
@@ -487,8 +487,9 @@ static inline u32 airoha_pkgid_from_screg(u32 value)
  * Package IDs are family-relative values stored by the bootloader in the
  * NP-SCU watchdog-reset scratch register 1. A value of zero is valid.
  */
-static inline u32 get_pkgid(struct regmap *np_scu)
+static inline u32 get_pkgid(void)
 {
+	struct regmap *np_scu = airoha_get_scu_regmap();
 	u32 value;
 	int err;
 
@@ -500,7 +501,7 @@ static inline u32 get_pkgid(struct regmap *np_scu)
 }
 
 /* HIR identifies the SoC family, for example EN7523_PKG (0x0c). */
-static inline enum airoha_pkg get_pkg()
+static inline enum airoha_pkg get_pkg(void)
 {
 	struct regmap *np_scu = airoha_get_scu_regmap();
 	u32 value;
@@ -513,7 +514,7 @@ static inline enum airoha_pkg get_pkg()
 	return FIELD_GET(AIROHA_NP_SCU_HIR_MASK, value);
 }
 
-static inline u32 get_pdidr()
+static inline u32 get_pdidr(void)
 {
 	struct regmap *np_scu = airoha_get_scu_regmap();
 	u32 value;
