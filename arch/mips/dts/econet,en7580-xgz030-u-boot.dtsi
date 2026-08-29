@@ -17,7 +17,7 @@
 
 		mkimage {
 			args = "-A", "mips", "-T", "standalone", "-O", "u-boot",
-			       "-C", "none", "-n", "EN7512 U-Boot SPL",
+			       "-C", "none", "-n", "EN7580 U-Boot SPL",
 			       "-a", __stringify(CONFIG_SPL_TEXT_BASE),
 			       "-e", __stringify(CONFIG_SPL_TEXT_BASE);
 
@@ -26,8 +26,27 @@
 		};
 	};
 
-	en7512-uboot {
-		filename = "u-boot-en7512.bin";
+	en7580-boot0 {
+		filename = "u-boot-boot0.bin";
+		pad-byte = <0xff>;
+		size = <0x00020000>;
+
+		u-boot-tpl {
+			offset = <0x00000000>;
+			size = <0x00008000>;
+		};
+
+
+		ddr-blob {
+			type = "blob-ext";
+			filename = "en7580_ddr.bin";
+			offset = <0x00010000>;
+			size = <0x0000b000>;
+		};
+	};
+
+	en7580-uboot {
+		filename = "u-boot-en7580.bin";
 		pad-byte = <0xff>;
 
 		u-boot-tpl {
@@ -35,24 +54,25 @@
 			size = <0x00008000>;
 		};
 
+
 		ddr-blob {
 			type = "blob-ext";
-			filename = "en751221_ddr.bin";
-			offset = <0x00008000>;
-			size = <0x00004f70>;
+			filename = "en7580_ddr.bin";
+			offset = <0x00010000>;
+			size = <0x0000b000>;
 		};
 
 		spl {
 			type = "blob";
 			filename = "u-boot-spl.img";
-			offset = <0x00010000>;
+			offset = <0x00020000>;
 			size = <0x00040000>;
 		};
 
 		u-boot {
 			type = "blob";
 			filename = "u-boot.img";
-			offset = <0x00050000>;
+			offset = <0x00060000>;
 		};
 	};
 };

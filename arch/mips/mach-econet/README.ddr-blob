@@ -1,10 +1,15 @@
-The file en7512_ddr.bin is the 20,336-byte FE-SRAM DDR calibration stage
-(spram.bin) from the EN7512/EN7521 vendor Linux 2.6 SDK. It is linked for
-0x9fa32800 and is entered at 0x9fa32800, matching the original boot2 flow. TPL keeps
-KSEG0 in uncached mode until DDR calibration completes.
+EcoNet DDR calibration
+======================
 
-SHA256:
-792068a4573b20cb8c39cb27df06c45683c11034e6fd07da24ddf7084828faa5
+DDR calibration is now stored as source under the per-SoC ``ddr/`` directories.
+No DDR binary blob is required in the source tree.
 
-This is a transitional dependency. Replace it with a source implementation
-of the EN7512 DDR2/DDR3 calibration algorithms before upstream submission.
+Build the temporary Binman input with one of:
+
+  tools/build-econet-ddr.sh en751221
+  tools/build-econet-ddr.sh en7528
+  tools/build-econet-ddr.sh en7580
+
+EN751221 requires a big-endian GNU MIPS toolchain. EN7528 and EN7580 require a
+little-endian GNU MIPS toolchain. Generated ``*_ddr.bin`` files are build
+artifacts and must not be committed.

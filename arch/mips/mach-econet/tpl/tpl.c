@@ -4,12 +4,12 @@
 #include <linux/byteorder/generic.h>
 #include <linux/types.h>
 #include <asm/io.h>
-#include <mach/en751221.h>
+#include <mach/boot.h>
 
 #define IH_MAGIC	0x27051956
 #define IH_HDR_SIZE	64
 
-struct en7512_legacy_header {
+struct econet_legacy_header {
 	u32 magic;
 	u32 hcrc;
 	u32 time;
@@ -31,8 +31,8 @@ static u32 get_be32(u32 val)
 
 static void tpl_putc(u8 ch)
 {
-	void __iomem *thr = (void __iomem *)(EN7512_UART0_BASE + 0x03);
-	void __iomem *lsr = (void __iomem *)(EN7512_UART0_BASE + 0x17);
+	void __iomem *thr = (void __iomem *)(ECONET_UART0_BASE + 0x03);
+	void __iomem *lsr = (void __iomem *)(ECONET_UART0_BASE + 0x17);
 
 	while (!(__raw_readb(lsr) & 0x20))
 		;
@@ -51,7 +51,7 @@ static void tpl_hang(u8 code)
 
 static void tpl_uart_init(void)
 {
-	void __iomem *base = (void __iomem *)EN7512_UART0_BASE;
+	void __iomem *base = (void __iomem *)ECONET_UART0_BASE;
 
 	__raw_writeb(0x80, base + 0x0f);
 	__raw_writel(0xea00fde8, base + 0x2c);
@@ -66,25 +66,25 @@ static void tpl_uart_init(void)
 
 void __noreturn tpl_main(void)
 {
-	struct en7512_legacy_header *hdr =
-		(struct en7512_legacy_header *)EN7512_SPL_HEADER_ADDR;
+	struct econet_legacy_header *hdr =
+		(struct econet_legacy_header *)ECONET_SPL_HEADER_ADDR;
 	void (*entry)(void);
 	u32 load, size, ep;
 	int ret;
 
 	tpl_uart_init();
-	if (en7512_sfc_init())
+	if (econet_sfc_init())
 		tpl_hang('I');
 
-	ret = en7512_sfc_read(EN7512_DDR_BLOB_OFFSET,
-			      (void *)EN7512_DDR_BLOB_ADDR,
-			      EN7512_DDR_BLOB_SIZE);
+	ret = econet_sfc_read(ECONET_DDR_BLOB_OFFSET,
+			      (void *)ECONET_DDR_BLOB_ADDR,
+			      ECONET_DDR_BLOB_SIZE);
 	if (ret)
 		tpl_hang('F');
 
-	en7512_run_ddr_blob();
+	econet_run_ddr_blob();
 
-	ret = en7512_sfc_read(EN7512_SPL_IMAGE_OFFSET, hdr, IH_HDR_SIZE);
+	ret = econet_sfc_read(ECONET_SPL_IMAGE_OFFSET, hdr, IH_HDR_SIZE);
 	if (ret || get_be32(hdr->magic) != IH_MAGIC)
 		tpl_hang('H');
 
@@ -97,7 +97,7 @@ void __noreturn tpl_main(void)
 		tpl_hang('L');
 
 	/* Write through KSEG1 so no dirty cache lines hide the SPL image. */
-	ret = en7512_sfc_read(EN7512_SPL_IMAGE_OFFSET + IH_HDR_SIZE,
+	ret = econet_sfc_read(ECONET_SPL_IMAGE_OFFSET + IH_HDR_SIZE,
 			      (void *)(load | 0x20000000), size);
 	if (ret)
 		tpl_hang('S');

@@ -1,0 +1,8 @@
+EN7580 XGZ030 BOARD
+S: Experimental
+F: arch/mips/mach-econet/en7580/
+F: board/econet/en7580/
+F: configs/en7580_xgz030_defconfig
+F: arch/mips/dts/econet,en7580*.dts*
+F: include/configs/en7580.h
+F: tools/build-en7580-ddr.sh

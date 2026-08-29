@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0+
 /*
- * Minimal EN7512/EN7521 serial-flash reader used before driver model.
+ * Minimal EcoNet serial-flash reader used before driver model.
  * Reconstructed from the vendor TCBoot move_data stage.
  */
 
@@ -9,7 +9,7 @@
 #include <linux/kernel.h>
 #include <linux/types.h>
 #include <asm/io.h>
-#include <mach/en751221.h>
+#include <mach/boot.h>
 
 #define SF_READ_IDLE_EN		0x004
 #define SF_MTX_MODE_TOG		0x014
@@ -48,7 +48,7 @@
 
 static inline void __iomem *sf_reg(u32 reg)
 {
-	return (void __iomem *)(EN7512_SFC_BASE + reg);
+	return (void __iomem *)(ECONET_SFC_BASE + reg);
 }
 
 static int sf_wait_eq(u32 reg, u32 expected)
@@ -126,7 +126,7 @@ static int sf_finish(void)
 	return sf_op(OP_CK, 5);
 }
 
-int en7512_sfc_init(void)
+int econet_sfc_init(void)
 {
 	int ret;
 
@@ -317,7 +317,7 @@ static int sf_nor_read(u32 offset, u8 *dst, size_t len, bool addr4b,
 	return 0;
 }
 
-int en7512_sfc_read(u32 offset, void *dst, size_t len)
+int econet_sfc_read(u32 offset, void *dst, size_t len)
 {
 	u32 strap = __raw_readl(sf_reg(SF_STRAP));
 	u8 *buf = dst;

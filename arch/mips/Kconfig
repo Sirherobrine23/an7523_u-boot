@@ -79,14 +79,6 @@ config ARCH_ECONET
 	select SPL_SKIP_LOWLEVEL_INIT if SPL
 	select SUPPORT_TPL
 	select SYS_CACHE_SHIFT_5
-	select MIPS_TUNE_34KC if TARGET_EN751221
-	select MIPS_TUNE_1004KC if TARGET_EN7528
-	select MIPS_SKIP_CP0_COUNT_CLEAR if TARGET_EN7528
-	help
-	  Support Airoha MIPS platforms. EN7512/EN7521 are
-	  big-endian MIPS34K devices, while EN7528 is a little-endian MIPS1004Kc
-	  device. The initial EN7528 target is intended to be chainloaded after
-	  the vendor firmware has trained DDR.
 
 config ARCH_MTMIPS
 	bool "Support MediaTek MIPS platforms"

@@ -2,7 +2,7 @@
 #include <asm/asm.h>
 #include <asm/regdef.h>
 #include <asm/mipsregs.h>
-#include <mach/en751221.h>
+#include <mach/boot.h>
 
 	.set noreorder
 
@@ -10,21 +10,23 @@ ENTRY(_start)
 	b	reset
 	 mtc0	zero, CP0_COUNT
 
+#ifdef CONFIG_TARGET_EN751221
 	/*
-	 * TCBoot image descriptor. The magic is byte-reversed in the vendor
-	 * format, while section offsets are stored as big-endian words.
+	 * Preserve the legacy descriptor on EN751221. The mask ROM does not use
+	 * these fields, but keeping them makes dumps recognizable by old tools.
 	 */
 	.org	0x0c
 	.byte	0x36, 0x35, 0x37, 0x38
-	.word	EN7512_DDR_BLOB_OFFSET
-	.word	EN7512_DDR_BLOB_OFFSET + EN7512_DDR_BLOB_SIZE
-	.word	EN7512_SPL_IMAGE_OFFSET
-	.word	EN7512_UBOOT_IMAGE_OFFSET
+	.word	ECONET_DDR_BLOB_OFFSET
+	.word	ECONET_DDR_BLOB_OFFSET + ECONET_DDR_BLOB_SIZE
+	.word	ECONET_SPL_IMAGE_OFFSET
+	.word	ECONET_UBOOT_IMAGE_OFFSET
+#endif
 
-	/* The vendor reset code begins at offset 0x48. */
+	/* Vendor reset code leaves this area free and enters at offset 0x48. */
 	.org	0x48
 reset:
-	/* Disable interrupts and force KSEG0 uncached before DDR exists. */
+	/* Disable interrupts and force KSEG0 uncached before DRAM exists. */
 	mfc0	t0, CP0_STATUS
 	li	t1, ~(ST0_IE | ST0_KSU)
 	and	t0, t0, t1
@@ -41,8 +43,8 @@ reset:
 	mtc0	t0, CP0_CONFIG
 	ehb
 
-	/* Arbiter and static-memory mappings copied from TCBoot. */
-	li	t0, EN7512_SYSCTL_BASE
+	/* Arbiter and static-memory mappings shared by EN751221 and EN7580. */
+	li	t0, ECONET_SYSCTL_BASE
 	li	t1, 0x80071f1e
 	sw	t1, 0x20(t0)
 	li	t1, 0x00071f1f
@@ -50,26 +52,26 @@ reset:
 	li	t1, 0x80050000
 	sw	t1, 0x34(t0)
 
-	li	t0, EN7512_SMC_BASE
+	li	t0, ECONET_SMC_BASE
 	li	t1, 0x102d1040
 	sw	t1, 0x00(t0)
 	li	t1, 0x200028d0
 	sw	t1, 0x14(t0)
 
-	/* Disable the interrupt controller. */
-	li	t0, EN7512_INTC_BASE
+	/* Disable the legacy interrupt controller. */
+	li	t0, ECONET_INTC_BASE
 	sw	zero, 0x00(t0)
 	sw	zero, 0x04(t0)
 
 	/* Enable PBUS access to the 48 KiB FE SRAM. */
-	li	t0, EN7512_FE_SRAM_SEL
+	li	t0, ECONET_FE_SRAM_SEL
 	lw	t1, 0(t0)
 	ori	t1, t1, 1
 	sw	t1, 0(t0)
 	sync
 
-	li	sp, EN7512_TPL_STACK_ADDR
-	li	fp, EN7512_TPL_STACK_ADDR
+	li	sp, ECONET_TPL_STACK_ADDR
+	li	fp, ECONET_TPL_STACK_ADDR
 
 	la	t9, tpl_main
 	jalr	t9
@@ -79,23 +81,23 @@ reset:
 	 nop
 END(_start)
 
-LEAF(en7512_run_ddr_blob)
-	li	t0, EN7512_TPL_SAVED_RA
+LEAF(econet_run_ddr_blob)
+	li	t0, ECONET_TPL_SAVED_RA
 	sw	ra, 0(t0)
 
 	la	t1, 1f
-	li	t0, EN7512_SCREG_WR0
+	li	t0, ECONET_SCREG_WR0
 	sw	t1, 0(t0)
 	sync
 
-	li	t9, EN7512_DDR_BLOB_ADDR
+	li	t9, ECONET_DDR_BLOB_ADDR
 	jr	t9
 	 nop
 1:
-	li	t0, EN7512_SCREG_WR0
+	li	t0, ECONET_SCREG_WR0
 	sw	zero, 0(t0)
-	li	t0, EN7512_TPL_SAVED_RA
+	li	t0, ECONET_TPL_SAVED_RA
 	lw	ra, 0(t0)
 	jr	ra
 	 nop
-END(en7512_run_ddr_blob)
+END(econet_run_ddr_blob)

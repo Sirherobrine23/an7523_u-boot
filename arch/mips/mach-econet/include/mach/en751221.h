@@ -34,13 +34,4 @@
 #define EN7512_SAVE_CLK_MASK		0x00fff000
 #define EN7512_SAVE_CLK_SHIFT		12
 
-#ifndef __ASSEMBLY__
-#include <stddef.h>
-#include <linux/types.h>
-
-int en7512_sfc_read(u32 offset, void *dst, size_t len);
-int en7512_sfc_init(void);
-void en7512_run_ddr_blob(void);
-#endif
-
 #endif

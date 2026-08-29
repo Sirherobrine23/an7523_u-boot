@@ -12,20 +12,32 @@ config TARGET_EN7528
 	select MIPS_TUNE_1004KC
 	select MIPS_SKIP_CP0_COUNT_CLEAR
 
+config TARGET_EN7580
+	bool "Airoha EN7580 SoC"
+	select SYSCON
+	select MIPS_TUNE_1004KC
+	select MIPS_SKIP_CP0_COUNT_CLEAR
+	help
+	  Select support for the little-endian MIPS32r2 EN7580 family.
+	  Initial support targets direct TPL/SPL bring-up on the XGZ030.
+
 config SYS_VENDOR
 	default "econet"
 
 config SYS_SOC
 	default "en751221" if TARGET_EN751221
 	default "en7528" if TARGET_EN7528
+	default "en7580" if TARGET_EN7580
 
 config SYS_BOARD
 	default "en7512" if TARGET_EN751221
 	default "en7528" if TARGET_EN7528
+	default "en7580" if TARGET_EN7580
 
 config SYS_CONFIG_NAME
 	default "en7512" if TARGET_EN751221
 	default "en7528" if TARGET_EN7528
+	default "en7580" if TARGET_EN7580
 
 config SYS_MALLOC_F_LEN
 	default 0x2000
@@ -59,7 +71,7 @@ config TPL_MAX_SIZE
 
 
 config BUILD_TARGET
-	default "u-boot.img" if TARGET_EN751221
+	default "u-boot.img"
 
 config BOARD_EN7512_REFERENCE
 	bool "EN7512/EN7521 reference board"
@@ -70,6 +82,17 @@ config BOARD_EN7512_REFERENCE
 	  Build a boot image compatible with the EN7512/EN7521 TCBoot flow.
 	  TPL initializes the serial flash controller, executes the legacy DDR
 	  calibration stage from FE SRAM and loads SPL into DDR.
+
+config BOARD_EN7580_XGZ030
+	bool "XGZ030 (EN7580, experimental TPL/SPL)"
+	select TARGET_EN7580
+	select BINMAN
+	select SPL_LOADER_SUPPORT if SPL
+	help
+	  Experimental direct-boot target for the XGZ030 EN7580 platform.
+	  TPL runs from the reset mapping, loads the GPL RAM-training payload
+	  into FE SRAM and then loads SPL into DRAM. The DDR and CPS bring-up
+	  paths are not yet validated on hardware.
 
 config BOARD_EN7528_TPLINK_XC220_G3V
 	bool "TP-Link XC220-G3V (EN7528, chainloaded)"
